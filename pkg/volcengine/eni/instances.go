@@ -6,6 +6,8 @@ package eni
 import (
 	"context"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/cilium/cilium/pkg/ipam"
 	ipamTypes "github.com/cilium/cilium/pkg/ipam/types"
 	v2 "github.com/cilium/cilium/pkg/k8s/apis/cilium.io/v2"
@@ -13,16 +15,43 @@ import (
 	"github.com/cilium/cilium/pkg/time"
 	eniTypes "github.com/cilium/cilium/pkg/volcengine/eni/types"
 	"github.com/cilium/cilium/pkg/volcengine/types"
-	"github.com/sirupsen/logrus"
 )
 
-type VolcengineAPI interface {
-	GetInstance(ctx context.Context, vpcs ipamTypes.VirtualNetworkMap, subnets ipamTypes.SubnetMap, instanceID string) (*ipamTypes.Instance, error)
-	GetInstances(ctx context.Context, vpcs ipamTypes.VirtualNetworkMap, subnets ipamTypes.SubnetMap) (*ipamTypes.InstanceMap, error)
-	GetVPCs(ctx context.Context) (ipamTypes.VirtualNetworkMap, error)
-	GetSubnets(ctx context.Context) (ipamTypes.SubnetMap, error)
-	GetSecurityGroups(ctx context.Context) (types.SecurityGroupMap, error)
-}
+type (
+	VolcengineAPI interface {
+		VPC
+		Subnet
+		ENI
+		SecurityGroup
+		Instance
+	}
+	VPC interface {
+		GetVPCs(ctx context.Context) (ipamTypes.VirtualNetworkMap, error)
+	}
+	Subnet interface {
+		GetSubnet(id string) *ipamTypes.Subnet
+		GetSubnets(ctx context.Context) (ipamTypes.SubnetMap, error)
+	}
+	ENI interface {
+		CreateNetworkInterface(ctx context.Context, secondaryPrivateIPCount int, vSwitchID string, groups []string, tags map[string]string) (string, *eniTypes.ENI, error)
+		AttachNetworkInterface(ctx context.Context, instanceID, eniID string) error
+		WaitENIAttached(ctx context.Context, eniID string) (string, error)
+		DeleteNetworkInterface(ctx context.Context, eniID string) error
+
+		IP
+	}
+	IP interface {
+		AssignPrivateIPAddresses(ctx context.Context, eniID string, toAllocate int) ([]string, error)
+		UnassignPrivateIPAddresses(ctx context.Context, eniID string, addresses []string) error
+	}
+	SecurityGroup interface {
+		GetSecurityGroups(ctx context.Context) (types.SecurityGroupMap, error)
+	}
+	Instance interface {
+		GetInstance(ctx context.Context, vpcs ipamTypes.VirtualNetworkMap, subnets ipamTypes.SubnetMap, instanceID string) (*ipamTypes.Instance, error)
+		GetInstances(ctx context.Context, vpcs ipamTypes.VirtualNetworkMap, subnets ipamTypes.SubnetMap) (*ipamTypes.InstanceMap, error)
+	}
+)
 
 // InstancesManager maintains the state of the instances. It must be kept up
 // to date by calling Resync() regularly.
@@ -148,7 +177,7 @@ func (m *InstancesManager) resync(ctx context.Context, instanceID string) time.T
 			fieldInstanceID:     instanceID,
 			"numVPCs":           len(vpcs),
 			"numSubnets":        len(subnets),
-			"numsecurityGroups": len(securityGroups),
+			"numSecurityGroups": len(securityGroups),
 		}).Info("Synchronized ENI information for the corresponding instance")
 
 		m.mutex.Lock()
@@ -177,7 +206,7 @@ func (m *InstancesManager) UpdateENI(instanceID string, eni *eniTypes.ENI) {
 func (m *InstancesManager) ForeachInstance(instanceID string, fn ipamTypes.InterfaceIterator) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
-	m.instances.ForeachInterface(instanceID, fn)
+	_ = m.instances.ForeachInterface(instanceID, fn)
 }
 
 func (m *InstancesManager) FindSuitableSubnet(spec eniTypes.Spec, toAllocate int) *ipamTypes.Subnet {
@@ -196,6 +225,16 @@ func (m *InstancesManager) FindSuitableSubnet(spec eniTypes.Spec, toAllocate int
 		}
 	}
 	return bestSubnet
+}
+
+// GetSubnet returns the subnet by subnet ID
+//
+// The returned subnet is immutable, so it can be safely accessed
+func (m *InstancesManager) GetSubnet(subnetID string) *ipamTypes.Subnet {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	return m.subnets[subnetID]
 }
 
 // FindSubnetByIDs returns the subnet with the most available addresses matching VPC ID,
@@ -243,7 +282,7 @@ func (m *InstancesManager) FindSubnetByTags(vpcID, availabilityZone string, requ
 	return bestSubnet
 }
 
-// FindSecurityGroupsByTags returns the security groups matching the provided VPC ID and security group IDs.
+// FindSecurityGroupsByIDs returns the security groups matching the provided VPC ID and security group IDs.
 func (m *InstancesManager) FindSecurityGroupsByIDs(vpcID string, securityGroupIDs []string) []*types.SecurityGroup {
 	securityGroups := make([]*types.SecurityGroup, 0, len(securityGroupIDs))
 	m.mutex.RLock()
