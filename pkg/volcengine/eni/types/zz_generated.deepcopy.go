@@ -48,9 +48,9 @@ func (in *ENIStatus) DeepCopyInto(out *ENIStatus) {
 	*out = *in
 	if in.ENIS != nil {
 		in, out := &in.ENIS, &out.ENIS
-		*out = make([]ENI, len(*in))
-		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+		*out = make(map[string]ENI, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	return
@@ -115,6 +115,11 @@ func (in *Spec) DeepCopyInto(out *Spec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.UsePrimaryAddress != nil {
+		in, out := &in.UsePrimaryAddress, &out.UsePrimaryAddress
+		*out = new(bool)
+		**out = **in
 	}
 	return
 }
