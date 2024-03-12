@@ -118,9 +118,13 @@ func (in *ENIStatus) DeepEqual(other *ENIStatus) bool {
 		if len(*in) != len(*other) {
 			return false
 		} else {
-			for i, inElement := range *in {
-				if !inElement.DeepEqual(&(*other)[i]) {
+			for key, inValue := range *in {
+				if otherValue, present := (*other)[key]; !present {
 					return false
+				} else {
+					if !inValue.DeepEqual(&otherValue) {
+						return false
+					}
 				}
 			}
 		}
@@ -262,6 +266,14 @@ func (in *Spec) DeepEqual(other *Spec) bool {
 					}
 				}
 			}
+		}
+	}
+
+	if (in.UsePrimaryAddress == nil) != (other.UsePrimaryAddress == nil) {
+		return false
+	} else if in.UsePrimaryAddress != nil {
+		if *in.UsePrimaryAddress != *other.UsePrimaryAddress {
+			return false
 		}
 	}
 

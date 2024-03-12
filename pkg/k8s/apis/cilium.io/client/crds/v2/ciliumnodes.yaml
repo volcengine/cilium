@@ -440,6 +440,11 @@ spec:
                     description: SubnetTags is the list of tags to use when evaluating
                       what Volcengine subnets to use for ENI and IP allocation.
                     type: object
+                  use-primary-address:
+                    description: UsePrimaryAddress determines whether a primary address
+                      of Volcengine ENI should be available for allocations on the
+                      node
+                    type: boolean
                   vpc-id:
                     description: VPCID is the VPC ID to use when allocating ENIs.
                     type: string
@@ -752,9 +757,8 @@ spec:
                 description: Volcengine is the Volcengine specific status of the node.
                 properties:
                   enis:
-                    description: ENIs is the list of ENIs on the node
-                    items:
-                      description: ENI represents an Volcengine Network Interface
+                    additionalProperties:
+                      description: ENI represents a Volcengine Network Interface
                       properties:
                         device-id:
                           description: DeviceID is the ID of the instance to which
@@ -838,7 +842,8 @@ spec:
                           description: ZoneID is the zone to which the ENI is attached
                           type: string
                       type: object
-                    type: array
+                    description: ENIs is the list of ENIs on the node
+                    type: object
                 type: object
             type: object
         required:

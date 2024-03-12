@@ -3,7 +3,10 @@
 
 package types
 
-import "github.com/cilium/cilium/pkg/ipam/types"
+import (
+	"github.com/cilium/cilium/pkg/ipam/types"
+	"github.com/spf13/cast"
+)
 
 // Spec is the ENI specification of a node. This specification is considered
 // by the cilium-operator to act as an IPAM operator and makes ENI IPs available
@@ -69,6 +72,16 @@ type Spec struct {
 	//
 	// +kubebuilder:validation:Optional
 	SecurityGroupTags map[string]string `json:"security-group-tags,omitempty"`
+
+	// UsePrimaryAddress determines whether a primary address of Volcengine ENI
+	// should be available for allocations on the node
+	//
+	// +kubebuilder:validation:Optional
+	UsePrimaryAddress *bool `json:"use-primary-address,omitempty"`
+}
+
+func (s *Spec) EnableUsePrimaryAddress() bool {
+	return cast.ToBool(s.UsePrimaryAddress)
 }
 
 type ENIType string
@@ -80,7 +93,7 @@ const (
 	ENITypeSecondary ENIType = "secondary"
 )
 
-// ENI represents an Volcengine Network Interface
+// ENI represents a Volcengine Network Interface
 type ENI struct {
 	// NetworkInterfaceID is the ENI ID
 	NetworkInterfaceID string `json:"network-interface-id,omitempty"`
@@ -186,5 +199,5 @@ type ENIStatus struct {
 	// ENIs is the list of ENIs on the node
 	//
 	// +optional
-	ENIS []ENI `json:"enis,omitempty"`
+	ENIS map[string]ENI `json:"enis,omitempty"`
 }
