@@ -258,6 +258,26 @@ const (
 	// (Create, Update, Delete) requests to the kube-apiserver.
 	CESWriteQPSBurst = "ces-write-qps-burst"
 
+	// Volcengine options
+
+	// VolcengineENIGCTags is a tag that will be added to every ENI
+	// created by the Volcengine ENI IPAM.
+	// Any stale and unattached ENIs with this tag will be garbage
+	// collected by the operator.
+	VolcengineENIGCTags = "eni-gc-tags"
+
+	// VolcengineENIGCInterval defines the interval of ENI GC
+	VolcengineENIGCInterval = "eni-gc-interval"
+
+	// VolcengineVPCID allows user to specific vpc
+	VolcengineVPCID = "volcengine-cloud-vpc-id"
+
+	// VolcengineReleaseExcessIPs allows releasing excess free IP addresses from ENI.
+	// Enabling this option reduces waste of IP addresses but may increase
+	// the number of API calls to AlibabaCloud ECS service.
+	VolcengineReleaseExcessIPs = "volcengine-cloud-release-excess-ips"
+	//volcengine-release-excess-ips
+
 	// LoadBalancerL7 enables loadbalancer capabilities for services via envoy proxy
 	LoadBalancerL7 = "loadbalancer-l7"
 
@@ -534,6 +554,25 @@ type OperatorConfig struct {
 	// (Create, Update, Delete) requests to the kube-apiserver.
 	CESWriteQPSBurst int
 
+	// Volcengine options
+
+	// VolcengineENIGCTags is a tag that will be added to every ENI
+	// created by the Volcengine ENI IPAM.
+	// Any stale and unattached ENIs with this tag will be garbage
+	// collected by the operator.
+	VolcengineENIGCTags map[string]string
+
+	// VolcengineENIGCInterval defines the interval of ENI GC
+	VolcengineENIGCInterval time.Duration
+
+	// VolcengineVPCID allow user to specific vpc
+	VolcengineVPCID string
+
+	// VolcengineReleaseExcessIPs allows releasing excess free IP addresses from ENI.
+	// Enabling this option reduces waste of IP addresses but may increase
+	// the number of API calls to Volcengine EC2 service.
+	VolcengineReleaseExcessIPs bool
+
 	// LoadBalancerL7 enables loadbalancer capabilities for services.
 	LoadBalancerL7 string
 
@@ -705,6 +744,11 @@ func (c *OperatorConfig) Populate(vp *viper.Viper) {
 	c.CESWriteQPSLimit = vp.GetFloat64(CESWriteQPSLimit)
 	c.CESWriteQPSBurst = vp.GetInt(CESWriteQPSBurst)
 
+	// Volcengine options
+	c.VolcengineVPCID = vp.GetString(VolcengineVPCID)
+	c.VolcengineReleaseExcessIPs = vp.GetBool(VolcengineReleaseExcessIPs)
+	c.VolcengineENIGCInterval = vp.GetDuration(VolcengineENIGCInterval)
+
 	// Option maps and slices
 
 	if m := vp.GetStringSlice(IPAMSubnetsIDs); len(m) != 0 {
@@ -741,6 +785,12 @@ func (c *OperatorConfig) Populate(vp *viper.Viper) {
 		c.ENIGarbageCollectionTags = m
 	}
 
+	if m, err := command.GetStringMapStringE(vp, VolcengineENIGCTags); err != nil {
+		log.Fatalf("unable to parse %s: %s", VolcengineENIGCTags, err)
+	} else {
+		c.VolcengineENIGCTags = m
+	}
+
 	if m, err := command.GetStringMapStringE(vp, IPAMAutoCreateCiliumPodIPPools); err != nil {
 		log.Fatalf("unable to parse %s: %s", IPAMAutoCreateCiliumPodIPPools, err)
 	} else {
@@ -757,4 +807,6 @@ var Config = &OperatorConfig{
 	AWSInstanceLimitMapping:        make(map[string]string),
 	ENITags:                        make(map[string]string),
 	ENIGarbageCollectionTags:       make(map[string]string),
+
+	VolcengineENIGCTags: make(map[string]string),
 }

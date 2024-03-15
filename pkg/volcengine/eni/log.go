@@ -6,13 +6,9 @@ package eni
 import (
 	"github.com/cilium/cilium/pkg/logging"
 	"github.com/cilium/cilium/pkg/logging/logfields"
+	"github.com/cilium/cilium/pkg/volcengine/constant"
 )
 
 var (
-	log = logging.DefaultLogger.WithField(logfields.LogSubsys, "volcengine")
-)
-
-const (
-	fieldENIID      = "eniID"
-	fieldInstanceID = "instanceID"
+	log = logging.DefaultLogger.WithField(logfields.LogSubsys, constant.Volcengine)
 )
