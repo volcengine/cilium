@@ -1,6 +1,10 @@
 package constant
 
 const (
+	Volcengine = "volcengine"
+)
+
+const (
 	LogFieldENID               = "eniID"
 	LogFieldSubnetID           = "subnetID"
 	LogFieldAddresses          = "addresses"
@@ -13,4 +17,8 @@ const (
 	LogFieldUsedAddressesCount = "usedAddressesCount"
 	LogFieldExcessIPs          = "excessIPs"
 	LogFieldFreeOnENICount     = "freeOnENICount"
+)
+
+const (
+	TagKeyVPCID = "VPCID"
 )

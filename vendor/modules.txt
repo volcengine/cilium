@@ -1169,6 +1169,35 @@ github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.4
 ## explicit; go 1.17
 github.com/vishvananda/netns
+# github.com/volcengine/volc-sdk-golang v1.0.23
+## explicit; go 1.14
+github.com/volcengine/volc-sdk-golang/base
+github.com/volcengine/volc-sdk-golang/service/sts
+# github.com/volcengine/volcengine-go-sdk v1.0.124
+## explicit; go 1.12
+github.com/volcengine/volcengine-go-sdk/internal/ini
+github.com/volcengine/volcengine-go-sdk/internal/sdkio
+github.com/volcengine/volcengine-go-sdk/internal/sdkmath
+github.com/volcengine/volcengine-go-sdk/internal/sdkrand
+github.com/volcengine/volcengine-go-sdk/internal/shareddefaults
+github.com/volcengine/volcengine-go-sdk/private/protocol
+github.com/volcengine/volcengine-go-sdk/private/protocol/query/queryutil
+github.com/volcengine/volcengine-go-sdk/service/ecs
+github.com/volcengine/volcengine-go-sdk/volcengine
+github.com/volcengine/volcengine-go-sdk/volcengine/client
+github.com/volcengine/volcengine-go-sdk/volcengine/client/metadata
+github.com/volcengine/volcengine-go-sdk/volcengine/corehandlers
+github.com/volcengine/volcengine-go-sdk/volcengine/credentials
+github.com/volcengine/volcengine-go-sdk/volcengine/custom
+github.com/volcengine/volcengine-go-sdk/volcengine/endpoints
+github.com/volcengine/volcengine-go-sdk/volcengine/request
+github.com/volcengine/volcengine-go-sdk/volcengine/response
+github.com/volcengine/volcengine-go-sdk/volcengine/signer/volc
+github.com/volcengine/volcengine-go-sdk/volcengine/special
+github.com/volcengine/volcengine-go-sdk/volcengine/volcenginebody
+github.com/volcengine/volcengine-go-sdk/volcengine/volcengineerr
+github.com/volcengine/volcengine-go-sdk/volcengine/volcenginequery
+github.com/volcengine/volcengine-go-sdk/volcengine/volcengineutil
 # github.com/yusufpapurcu/wmi v1.2.3
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi

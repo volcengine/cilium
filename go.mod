@@ -85,6 +85,7 @@ require (
 	github.com/tidwall/sjson v1.2.5
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20231127184239-0ced8385386a
 	github.com/vishvananda/netns v0.0.4
+	github.com/volcengine/volcengine-go-sdk v1.0.124
 	go.etcd.io/etcd/api/v3 v3.5.11
 	go.etcd.io/etcd/client/pkg/v3 v3.5.11
 	go.etcd.io/etcd/client/v3 v3.5.11
@@ -239,6 +240,7 @@ require (
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
+	github.com/volcengine/volc-sdk-golang v1.0.23 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	github.com/zeebo/errs v1.3.0 // indirect
 	gitlab.com/golang-commonmark/puny v0.0.0-20191124015043-9f83538fa04f // indirect

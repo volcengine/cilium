@@ -13,6 +13,7 @@ import (
 	v2 "github.com/cilium/cilium/pkg/k8s/apis/cilium.io/v2"
 	"github.com/cilium/cilium/pkg/lock"
 	"github.com/cilium/cilium/pkg/time"
+	"github.com/cilium/cilium/pkg/volcengine/constant"
 	eniTypes "github.com/cilium/cilium/pkg/volcengine/eni/types"
 	"github.com/cilium/cilium/pkg/volcengine/types"
 )
@@ -169,15 +170,15 @@ func (m *InstancesManager) resync(ctx context.Context, instanceID string) time.T
 	} else {
 		instance, err := m.api.GetInstance(ctx, vpcs, subnets, instanceID)
 		if err != nil {
-			log.WithError(err).WithField(fieldENIID, instanceID).Warning("Unable to synchronize instance")
+			log.WithError(err).WithField(constant.LogFieldENID, instanceID).Warning("Unable to synchronize instance")
 			return time.Time{}
 		}
 
 		log.WithFields(logrus.Fields{
-			fieldInstanceID:     instanceID,
-			"numVPCs":           len(vpcs),
-			"numSubnets":        len(subnets),
-			"numSecurityGroups": len(securityGroups),
+			constant.LogFieldInstanceID: instanceID,
+			"numVPCs":                   len(vpcs),
+			"numSubnets":                len(subnets),
+			"numSecurityGroups":         len(securityGroups),
 		}).Info("Synchronized ENI information for the corresponding instance")
 
 		m.mutex.Lock()
