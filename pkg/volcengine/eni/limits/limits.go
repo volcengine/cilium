@@ -4,8 +4,11 @@
 package limits
 
 import (
+	"context"
+
 	ipamTypes "github.com/cilium/cilium/pkg/ipam/types"
 	"github.com/cilium/cilium/pkg/lock"
+	"github.com/cilium/cilium/pkg/volcengine/api"
 )
 
 // limits contains limits for adapter count and addresses. The mappings will be
@@ -24,4 +27,8 @@ func Get(instanceType string) (limit ipamTypes.Limits, ok bool) {
 	limit, ok = limits.m[instanceType]
 	limits.RUnlock()
 	return
+}
+
+func UpdateFromAPI(ctx context.Context, ec2 api.VolcengineClient) error {
+	return nil
 }
