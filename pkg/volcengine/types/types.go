@@ -25,3 +25,13 @@ type SecurityGroup struct {
 }
 
 type SecurityGroupMap map[string]*SecurityGroup
+
+// InterfaceInfo represents NIC information that metadata service would return
+type InterfaceInfo struct {
+	NetworkInterfaceID string `json:"NetworkInterfaceId,omitempty"`
+	PrimaryIPAddress   string `json:"PrimaryIpAddress,omitempty"`
+	Gateway            string `json:"Gateway,omitempty"`
+	SubnetID           string `json:"SubnetId,omitempty"`
+	SubnetCidrBlock    string `json:"SubnetCidrBlock,omitempty"`
+	PrivateIpv4s       string `json:"PrivateIpv4s,omitempty"`
+}
