@@ -13,8 +13,8 @@ import (
 )
 
 // Describes one or more of your network ACLs. For more information, see Network
-// ACLs (https://docs.aws.amazon.com/vpc/latest/userguide/VPC_ACLs.html) in the
-// Amazon Virtual Private Cloud User Guide.
+// ACLs (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html) in
+// the Amazon VPC User Guide.
 func (c *Client) DescribeNetworkAcls(ctx context.Context, params *DescribeNetworkAclsInput, optFns ...func(*Options)) (*DescribeNetworkAclsOutput, error) {
 	if params == nil {
 		params = &DescribeNetworkAclsInput{}
@@ -38,7 +38,7 @@ type DescribeNetworkAclsInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
-	// One or more filters.
+	// The filters.
 	//   - association.association-id - The ID of an association ID for the ACL.
 	//   - association.network-acl-id - The ID of the network ACL involved in the
 	//   association.
@@ -75,7 +75,7 @@ type DescribeNetworkAclsInput struct {
 	// .
 	MaxResults *int32
 
-	// One or more network ACL IDs. Default: Describes all your network ACLs.
+	// The IDs of the network ACLs. Default: Describes all your network ACLs.
 	NetworkAclIds []string
 
 	// The token returned from a previous paginated request. Pagination continues from
@@ -101,12 +101,22 @@ type DescribeNetworkAclsOutput struct {
 }
 
 func (c *Client) addOperationDescribeNetworkAclsMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpDescribeNetworkAcls{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpDescribeNetworkAcls{}, middleware.After)
 	if err != nil {
+		return err
+	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeNetworkAcls"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -127,22 +137,22 @@ func (c *Client) addOperationDescribeNetworkAclsMiddlewares(stack *middleware.St
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
-		return err
-	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeNetworkAcls(options.Region), middleware.Before); err != nil {
@@ -158,6 +168,9 @@ func (c *Client) addOperationDescribeNetworkAclsMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
+		return err
+	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -261,7 +274,6 @@ func newServiceMetadataMiddleware_opDescribeNetworkAcls(region string) *awsmiddl
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "ec2",
 		OperationName: "DescribeNetworkAcls",
 	}
 }

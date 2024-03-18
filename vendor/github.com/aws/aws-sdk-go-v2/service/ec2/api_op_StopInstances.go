@@ -4,6 +4,7 @@ package ec2
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -14,8 +15,8 @@ import (
 // Stops an Amazon EBS-backed instance. For more information, see Stop and start
 // your instance (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Stop_Start.html)
 // in the Amazon EC2 User Guide. You can use the Stop action to hibernate an
-// instance if the instance is enabled for hibernation (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Hibernate.html#enabling-hibernation)
-// and it meets the hibernation prerequisites (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Hibernate.html#hibernating-prerequisites)
+// instance if the instance is enabled for hibernation (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/enabling-hibernation.html)
+// and it meets the hibernation prerequisites (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html)
 // . For more information, see Hibernate your instance (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Hibernate.html)
 // in the Amazon EC2 User Guide. We don't charge usage for a stopped instance, or
 // data transfer fees; however, your root partition Amazon EBS volume remains and
@@ -98,12 +99,22 @@ type StopInstancesOutput struct {
 }
 
 func (c *Client) addOperationStopInstancesMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpStopInstances{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpStopInstances{}, middleware.After)
 	if err != nil {
+		return err
+	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "StopInstances"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -124,22 +135,22 @@ func (c *Client) addOperationStopInstancesMiddlewares(stack *middleware.Stack, o
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
-		return err
-	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addOpStopInstancesValidationMiddleware(stack); err != nil {
@@ -160,6 +171,9 @@ func (c *Client) addOperationStopInstancesMiddlewares(stack *middleware.Stack, o
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -167,7 +181,6 @@ func newServiceMetadataMiddleware_opStopInstances(region string) *awsmiddleware.
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "ec2",
 		OperationName: "StopInstances",
 	}
 }

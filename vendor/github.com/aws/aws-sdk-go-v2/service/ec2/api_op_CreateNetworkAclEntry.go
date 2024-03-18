@@ -4,6 +4,7 @@ package ec2
 
 import (
 	"context"
+	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -22,8 +23,8 @@ import (
 // easier to add a rule between existing ones without having to renumber the rules.
 // After you add an entry, you can't modify it; you must either replace it, or
 // create an entry and delete the old one. For more information about network ACLs,
-// see Network ACLs (https://docs.aws.amazon.com/vpc/latest/userguide/VPC_ACLs.html)
-// in the Amazon Virtual Private Cloud User Guide.
+// see Network ACLs (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-network-acls.html)
+// in the Amazon VPC User Guide.
 func (c *Client) CreateNetworkAclEntry(ctx context.Context, params *CreateNetworkAclEntryInput, optFns ...func(*Options)) (*CreateNetworkAclEntryOutput, error) {
 	if params == nil {
 		params = &CreateNetworkAclEntryInput{}
@@ -109,12 +110,22 @@ type CreateNetworkAclEntryOutput struct {
 }
 
 func (c *Client) addOperationCreateNetworkAclEntryMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpCreateNetworkAclEntry{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpCreateNetworkAclEntry{}, middleware.After)
 	if err != nil {
+		return err
+	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateNetworkAclEntry"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -135,22 +146,22 @@ func (c *Client) addOperationCreateNetworkAclEntryMiddlewares(stack *middleware.
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
-		return err
-	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addOpCreateNetworkAclEntryValidationMiddleware(stack); err != nil {
@@ -171,6 +182,9 @@ func (c *Client) addOperationCreateNetworkAclEntryMiddlewares(stack *middleware.
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -178,7 +192,6 @@ func newServiceMetadataMiddleware_opCreateNetworkAclEntry(region string) *awsmid
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "ec2",
 		OperationName: "CreateNetworkAclEntry",
 	}
 }

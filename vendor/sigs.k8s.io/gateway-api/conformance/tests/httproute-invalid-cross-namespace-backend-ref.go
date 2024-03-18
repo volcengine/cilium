@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/conformance/utils/http"
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
 	"sigs.k8s.io/gateway-api/conformance/utils/suite"
@@ -49,11 +49,10 @@ var HTTPRouteInvalidCrossNamespaceBackendRef = suite.ConformanceTest{
 		gwAddr := kubernetes.GatewayAndHTTPRoutesMustBeAccepted(t, suite.Client, suite.TimeoutConfig, suite.ControllerName, kubernetes.NewGatewayRef(gwNN), routeNN)
 
 		t.Run("HTTPRoute with a cross-namespace BackendRef and no ReferenceGrant has a ResolvedRefs Condition with status False and Reason RefNotPermitted", func(t *testing.T) {
-
 			resolvedRefsCond := metav1.Condition{
-				Type:   string(v1beta1.RouteConditionResolvedRefs),
+				Type:   string(v1.RouteConditionResolvedRefs),
 				Status: metav1.ConditionFalse,
-				Reason: string(v1beta1.RouteReasonRefNotPermitted),
+				Reason: string(v1.RouteReasonRefNotPermitted),
 			}
 
 			kubernetes.HTTPRouteMustHaveCondition(t, suite.Client, suite.TimeoutConfig, routeNN, gwNN, resolvedRefsCond)
@@ -68,6 +67,5 @@ var HTTPRouteInvalidCrossNamespaceBackendRef = suite.ConformanceTest{
 				Response: http.Response{StatusCode: 500},
 			})
 		})
-
 	},
 }

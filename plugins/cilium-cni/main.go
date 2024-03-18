@@ -564,7 +564,7 @@ func cmdAdd(args *skel.CmdArgs) (err error) {
 	}
 
 	switch conf.IpamMode {
-	case ipamOption.IPAMENI, ipamOption.IPAMAzure, ipamOption.IPAMAlibabaCloud:
+	case ipamOption.IPAMENI, ipamOption.IPAMAzure, ipamOption.IPAMAlibabaCloud, ipamOption.IPAMVolcengine:
 		err = interfaceAdd(ipConfig, ipam.IPV4, conf)
 		if err != nil {
 			return fmt.Errorf("unable to setup interface datapath: %s", err)

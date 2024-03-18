@@ -167,14 +167,30 @@ type RunInstancesInput struct {
 	// customers and will be able to continue using the service.
 	ElasticInferenceAccelerators []types.ElasticInferenceAccelerator
 
+	// If you’re launching an instance into a dual-stack or IPv6-only subnet, you can
+	// enable assigning a primary IPv6 address. A primary IPv6 address is an IPv6 GUA
+	// address associated with an ENI that you have enabled to use a primary IPv6
+	// address. Use this option if an instance relies on its IPv6 address not changing.
+	// When you launch the instance, Amazon Web Services will automatically assign an
+	// IPv6 address associated with the ENI attached to your instance to be the primary
+	// IPv6 address. Once you enable an IPv6 GUA address to be a primary IPv6, you
+	// cannot disable it. When you enable an IPv6 GUA address to be a primary IPv6, the
+	// first IPv6 GUA will be made the primary IPv6 address until the instance is
+	// terminated or the network interface is detached. If you have multiple IPv6
+	// addresses associated with an ENI attached to your instance and you enable a
+	// primary IPv6 address, the first IPv6 GUA address associated with the ENI becomes
+	// the primary IPv6 address.
+	EnablePrimaryIpv6 *bool
+
 	// Indicates whether the instance is enabled for Amazon Web Services Nitro
 	// Enclaves. For more information, see What is Amazon Web Services Nitro Enclaves? (https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave.html)
 	// in the Amazon Web Services Nitro Enclaves User Guide. You can't enable Amazon
 	// Web Services Nitro Enclaves and hibernation on the same instance.
 	EnclaveOptions *types.EnclaveOptionsRequest
 
-	// Indicates whether an instance is enabled for hibernation. For more information,
-	// see Hibernate your instance (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Hibernate.html)
+	// Indicates whether an instance is enabled for hibernation. This parameter is
+	// valid only if the instance meets the hibernation prerequisites (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/hibernating-prerequisites.html)
+	// . For more information, see Hibernate your instance (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Hibernate.html)
 	// in the Amazon EC2 User Guide. You can't enable hibernation and Amazon Web
 	// Services Nitro Enclaves on the same instance.
 	HibernationOptions *types.HibernationOptionsRequest
@@ -197,12 +213,7 @@ type RunInstancesInput struct {
 	InstanceMarketOptions *types.InstanceMarketOptionsRequest
 
 	// The instance type. For more information, see Instance types (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html)
-	// in the Amazon EC2 User Guide. When you change your EBS-backed instance type,
-	// instance restart or replacement behavior depends on the instance type
-	// compatibility between the old and new types. An instance that's backed by an
-	// instance store volume is always replaced. For more information, see Change the
-	// instance type (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-resize.html)
-	// in the Amazon EC2 User Guide. Default: m1.small
+	// in the Amazon EC2 User Guide.
 	InstanceType types.InstanceType
 
 	// The number of IPv6 addresses to associate with the primary network interface.
@@ -259,7 +270,8 @@ type RunInstancesInput struct {
 	Placement *types.Placement
 
 	// The options for the instance hostname. The default values are inherited from
-	// the subnet.
+	// the subnet. Applies only if creating a network interface, not attaching an
+	// existing one.
 	PrivateDnsNameOptions *types.PrivateDnsNameOptionsRequest
 
 	// The primary IPv4 address. You must specify a value from the IPv4 address range
@@ -344,12 +356,22 @@ type RunInstancesOutput struct {
 }
 
 func (c *Client) addOperationRunInstancesMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpRunInstances{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpRunInstances{}, middleware.After)
 	if err != nil {
+		return err
+	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "RunInstances"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -370,22 +392,22 @@ func (c *Client) addOperationRunInstancesMiddlewares(stack *middleware.Stack, op
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
-		return err
-	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opRunInstancesMiddleware(stack, options); err != nil {
@@ -407,6 +429,9 @@ func (c *Client) addOperationRunInstancesMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
+		return err
+	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -449,7 +474,6 @@ func newServiceMetadataMiddleware_opRunInstances(region string) *awsmiddleware.R
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "ec2",
 		OperationName: "RunInstances",
 	}
 }
