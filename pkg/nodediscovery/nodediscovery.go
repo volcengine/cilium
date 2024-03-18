@@ -40,6 +40,8 @@ import (
 	"github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/cilium/pkg/stream"
 	"github.com/cilium/cilium/pkg/time"
+	volcengineAPI "github.com/cilium/cilium/pkg/volcengine/api"
+	volcengineTypes "github.com/cilium/cilium/pkg/volcengine/eni/types"
 	cnitypes "github.com/cilium/cilium/plugins/cilium-cni/types"
 )
 
@@ -83,7 +85,8 @@ func enableLocalNodeRoute() bool {
 	return option.Config.EnableLocalNodeRoute &&
 		option.Config.IPAM != ipamOption.IPAMENI &&
 		option.Config.IPAM != ipamOption.IPAMAzure &&
-		option.Config.IPAM != ipamOption.IPAMAlibabaCloud
+		option.Config.IPAM != ipamOption.IPAMAlibabaCloud &&
+		option.Config.IPAM != ipamOption.IPAMVolcengine
 }
 
 // NewNodeDiscovery returns a pointer to new node discovery object
@@ -612,6 +615,68 @@ func (n *NodeDiscovery) mutateNodeResource(nodeResource *ciliumv2.CiliumNode, ln
 				nodeResource.Spec.AlibabaCloud.SecurityGroupTags = c.AlibabaCloud.SecurityGroupTags
 			}
 
+			if c.IPAM.PreAllocate != 0 {
+				nodeResource.Spec.IPAM.PreAllocate = c.IPAM.PreAllocate
+			}
+		}
+	case ipamOption.IPAMVolcengine:
+		ctx := context.TODO()
+		md := volcengineAPI.NewMetadata()
+		nodeResource.Spec.Volcengine = volcengineTypes.Spec{}
+		instanceID, err := md.InstanceID(ctx)
+		if err != nil {
+			log.WithError(err).Fatal("Unable to retrieve InstanceID of own ECS instance")
+
+		}
+		if instanceID == "" {
+			return errors.New("InstanceID of Volcengine ECS instance is empty")
+		}
+
+		instanceType, err := md.InstanceType(ctx)
+		if err != nil {
+			log.WithError(err).Fatal("Unable to retrieve InstanceType of own ECS instance")
+		}
+		vpcID, err := md.VPCID(ctx)
+		if err != nil {
+			log.WithError(err).Fatal("Unable to retrieve VPC ID of own ECS instance")
+		}
+		vpcCIDR, err := md.VPCCidrBlock(ctx)
+		if err != nil {
+			log.WithError(err).Fatal("Unable to retrieve VPC CIDR block of own ECS instance")
+		}
+		zoneID, err := md.AvailabilityZone(ctx)
+		if err != nil {
+			log.WithError(err).Fatal("Unable to retrieve Zone ID of own ECS instance")
+		}
+
+		nodeResource.Spec.InstanceID = instanceID
+		nodeResource.Spec.Volcengine.InstanceType = instanceType
+		nodeResource.Spec.Volcengine.VPCID = vpcID
+		nodeResource.Spec.Volcengine.CIDRBlock = vpcCIDR
+		nodeResource.Spec.Volcengine.AvailabilityZone = zoneID
+
+		if c := n.NetConf; c != nil {
+			if c.Volcengine.VPCID != "" {
+				nodeResource.Spec.Volcengine.VPCID = c.Volcengine.VPCID
+			}
+			if c.Volcengine.CIDRBlock != "" {
+				nodeResource.Spec.Volcengine.CIDRBlock = c.Volcengine.CIDRBlock
+			}
+			if len(c.Volcengine.SubnetIDs) > 0 {
+				nodeResource.Spec.Volcengine.SubnetIDs = c.Volcengine.SubnetIDs
+			}
+			if len(c.Volcengine.SubnetTags) > 0 {
+				nodeResource.Spec.Volcengine.SubnetTags = c.Volcengine.SubnetTags
+			}
+			if len(c.Volcengine.SecurityGroups) > 0 {
+				nodeResource.Spec.Volcengine.SecurityGroups = c.Volcengine.SecurityGroups
+			}
+			if len(c.Volcengine.SecurityGroupTags) > 0 {
+				nodeResource.Spec.Volcengine.SecurityGroupTags = c.Volcengine.SecurityGroupTags
+			}
+			if c.Volcengine.UsePrimaryAddress != nil {
+				nodeResource.Spec.Volcengine.UsePrimaryAddress = c.Volcengine.UsePrimaryAddress
+			}
 			if c.IPAM.PreAllocate != 0 {
 				nodeResource.Spec.IPAM.PreAllocate = c.IPAM.PreAllocate
 			}

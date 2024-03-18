@@ -1080,7 +1080,8 @@ func (m *Manager) getDeliveryInterface(ifName string) string {
 		return "lxc+"
 
 	case m.sharedCfg.IPAM == ipamOption.IPAMENI ||
-		m.sharedCfg.IPAM == ipamOption.IPAMAlibabaCloud:
+		m.sharedCfg.IPAM == ipamOption.IPAMAlibabaCloud ||
+		m.sharedCfg.IPAM == ipamOption.IPAMVolcengine:
 		return "lxc+"
 
 	default:
@@ -1684,7 +1685,7 @@ func (m *Manager) installRules(ifName string) error {
 	// and route them back the same way even if the pod responding is using
 	// the IP of a different interface. Please see note in Reinitialize()
 	// in pkg/datapath/loader for more details.
-	if m.sharedCfg.IPAM == ipamOption.IPAMENI || m.sharedCfg.IPAM == ipamOption.IPAMAlibabaCloud {
+	if m.sharedCfg.IPAM == ipamOption.IPAMENI || m.sharedCfg.IPAM == ipamOption.IPAMAlibabaCloud || m.sharedCfg.IPAM == ipamOption.IPAMVolcengine {
 		if err := m.addCiliumENIRules(); err != nil {
 			return fmt.Errorf("cannot install rules for ENI multi-node NodePort: %w", err)
 		}

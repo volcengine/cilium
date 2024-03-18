@@ -6,6 +6,8 @@
   {{- $cloud = "azure" -}}
 {{- else if .Values.alibabacloud.enabled -}}
   {{- $cloud = "alibabacloud" -}}
+{{- else if .Values.volcengine.enabled -}}
+  {{- $cloud = "volcengine" -}}
 {{- end -}}
 {{- $cloud -}}
 {{- end -}}
@@ -18,6 +20,8 @@
   {{- $imageDigest = (.Values.operator.image.useDigest | default false) | ternary (printf "@%s" .Values.operator.image.azureDigest) "" -}}
 {{- else if .Values.alibabacloud.enabled -}}
   {{- $imageDigest = (.Values.operator.image.useDigest | default false) | ternary (printf "@%s" .Values.operator.image.alibabacloudDigest) "" -}}
+{{- else if .Values.volcengine.enabled -}}
+  {{- $imageDigest = (.Values.operator.image.useDigest | default false) | ternary (printf "@%s" .Values.operator.image.volcengine) "" -}}
 {{- end -}}
 {{- $imageDigest -}}
 {{- end -}}

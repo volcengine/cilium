@@ -5,17 +5,18 @@ ROOT_DIR := $(shell dirname "$(realpath $(lastword $(MAKEFILE_LIST)))")
 
 include ${ROOT_DIR}/../Makefile.defs
 
-TARGETS := cilium-operator cilium-operator-generic cilium-operator-aws cilium-operator-azure cilium-operator-alibabacloud
+TARGETS := cilium-operator cilium-operator-generic cilium-operator-aws cilium-operator-azure cilium-operator-alibabacloud cilium-operator-volcengine
 
 .PHONY: all $(TARGETS) clean install
 
 all: $(TARGETS)
 
-cilium-operator: GO_TAGS_FLAGS+=ipam_provider_aws,ipam_provider_azure,ipam_provider_operator,ipam_provider_alibabacloud
+cilium-operator: GO_TAGS_FLAGS+=ipam_provider_aws,ipam_provider_azure,ipam_provider_operator,ipam_provider_alibabacloud,ipam_provider_volcengine
 cilium-operator-generic: GO_TAGS_FLAGS+=ipam_provider_operator
 cilium-operator-aws: GO_TAGS_FLAGS+=ipam_provider_aws
 cilium-operator-azure: GO_TAGS_FLAGS+=ipam_provider_azure
 cilium-operator-alibabacloud: GO_TAGS_FLAGS+=ipam_provider_alibabacloud
+cilium-operator-volcengine: GO_TAGS_FLAGS+=ipam_provider_volcengine
 
 $(TARGETS):
 	@$(ECHO_GO)
@@ -49,3 +50,7 @@ install-azure:
 install-alibabacloud:
 	$(QUIET)$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)
 	$(QUIET)$(INSTALL) -m 0755 cilium-operator-alibabacloud $(DESTDIR)$(BINDIR)
+
+install-volcengine:
+	$(QUIET)$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)
+	$(QUIET)$(INSTALL) -m 0755 cilium-operator-volcengine $(DESTDIR)$(BINDIR)

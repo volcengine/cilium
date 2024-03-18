@@ -13,45 +13,10 @@ import (
 	v2 "github.com/cilium/cilium/pkg/k8s/apis/cilium.io/v2"
 	"github.com/cilium/cilium/pkg/lock"
 	"github.com/cilium/cilium/pkg/time"
+	"github.com/cilium/cilium/pkg/volcengine/api"
 	"github.com/cilium/cilium/pkg/volcengine/constant"
 	eniTypes "github.com/cilium/cilium/pkg/volcengine/eni/types"
 	"github.com/cilium/cilium/pkg/volcengine/types"
-)
-
-type (
-	VolcengineAPI interface {
-		VPC
-		Subnet
-		ENI
-		SecurityGroup
-		Instance
-	}
-	VPC interface {
-		GetVPCs(ctx context.Context) (ipamTypes.VirtualNetworkMap, error)
-	}
-	Subnet interface {
-		GetSubnet(id string) *ipamTypes.Subnet
-		GetSubnets(ctx context.Context) (ipamTypes.SubnetMap, error)
-	}
-	ENI interface {
-		CreateNetworkInterface(ctx context.Context, secondaryPrivateIPCount int, vSwitchID string, groups []string, tags map[string]string) (string, *eniTypes.ENI, error)
-		AttachNetworkInterface(ctx context.Context, instanceID, eniID string) error
-		WaitENIAttached(ctx context.Context, eniID string) (string, error)
-		DeleteNetworkInterface(ctx context.Context, eniID string) error
-
-		IP
-	}
-	IP interface {
-		AssignPrivateIPAddresses(ctx context.Context, eniID string, toAllocate int) ([]string, error)
-		UnassignPrivateIPAddresses(ctx context.Context, eniID string, addresses []string) error
-	}
-	SecurityGroup interface {
-		GetSecurityGroups(ctx context.Context) (types.SecurityGroupMap, error)
-	}
-	Instance interface {
-		GetInstance(ctx context.Context, vpcs ipamTypes.VirtualNetworkMap, subnets ipamTypes.SubnetMap, instanceID string) (*ipamTypes.Instance, error)
-		GetInstances(ctx context.Context, vpcs ipamTypes.VirtualNetworkMap, subnets ipamTypes.SubnetMap) (*ipamTypes.InstanceMap, error)
-	}
 )
 
 // InstancesManager maintains the state of the instances. It must be kept up
@@ -63,11 +28,11 @@ type InstancesManager struct {
 	subnets        ipamTypes.SubnetMap
 	vpcs           ipamTypes.VirtualNetworkMap
 	securityGroups types.SecurityGroupMap
-	api            VolcengineAPI
+	api            api.VolcengineAPI
 }
 
 // NewInstancesManager creates a new InstancesManager.
-func NewInstancesManager(api VolcengineAPI) *InstancesManager {
+func NewInstancesManager(api api.VolcengineAPI) *InstancesManager {
 	return &InstancesManager{
 		instances: ipamTypes.NewInstanceMap(),
 		api:       api,

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cilium/cilium/pkg/ipam/types"
+	"github.com/cilium/cilium/pkg/volcengine/api"
 )
 
 type GarbageCollectionParams struct {
@@ -18,6 +19,6 @@ type GarbageCollectionParams struct {
 	ENITags types.Tags
 }
 
-func StartENIGarbageCollector(ctx context.Context, api VolcengineAPI, params GarbageCollectionParams) {
+func StartENIGarbageCollector(ctx context.Context, api api.VolcengineAPI, params GarbageCollectionParams) {
 	log.Info("Starting to garbage collect detached ENIs")
 }
