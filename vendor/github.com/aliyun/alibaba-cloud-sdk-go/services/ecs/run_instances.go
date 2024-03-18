@@ -148,6 +148,7 @@ type RunInstancesRequest struct {
 	DeploymentSetId                          string                          `position:"Query" name:"DeploymentSetId"`
 	NetworkInterface                         *[]RunInstancesNetworkInterface `position:"Query" name:"NetworkInterface"  type:"Repeated"`
 	Amount                                   requests.Integer                `position:"Query" name:"Amount"`
+	AutoPay                                  requests.Boolean                `position:"Query" name:"AutoPay"`
 	OwnerAccount                             string                          `position:"Query" name:"OwnerAccount"`
 	Tenancy                                  string                          `position:"Query" name:"Tenancy"`
 	RamRoleName                              string                          `position:"Query" name:"RamRoleName"`
@@ -216,6 +217,8 @@ type RunInstancesNetworkInterface struct {
 	Ipv6AddressCount            string    `name:"Ipv6AddressCount"`
 	Ipv6Address                 *[]string `name:"Ipv6Address" type:"Repeated"`
 	NetworkCardIndex            string    `name:"NetworkCardIndex"`
+	DeleteOnRelease             string    `name:"DeleteOnRelease"`
+	NetworkInterfaceId          string    `name:"NetworkInterfaceId"`
 }
 
 // RunInstancesDataDisk is a repeated param struct in RunInstancesRequest

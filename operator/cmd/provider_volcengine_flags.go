@@ -37,5 +37,5 @@ func (h *volcengineFlagsHooks) RegisterProviderFlag(cmd *cobra.Command, vp *vipe
 	flags.Bool(operatorOption.VolcengineReleaseExcessIPs, false, "Enable releasing excess free IP addresses from Volcengine ENI.")
 	option.BindEnv(vp, operatorOption.VolcengineReleaseExcessIPs)
 
-	vp.BindEnv(flags)
+	vp.BindPFlags(flags)
 }

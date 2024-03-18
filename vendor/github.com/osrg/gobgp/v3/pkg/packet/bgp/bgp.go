@@ -32,8 +32,21 @@ import (
 )
 
 type MarshallingOption struct {
-	AddPath    map[RouteFamily]BGPAddPathMode
-	Attributes map[BGPAttrType]bool
+	AddPath        map[RouteFamily]BGPAddPathMode
+	Attributes     map[BGPAttrType]bool
+	ImplicitPrefix AddrPrefixInterface
+}
+
+// GetImplicitPrefix gets the implicit prefix associated with decoding/serialisation. This is used for
+// the MRT representation of MP_REACH_NLRI (see RFC 6396 4.3.4).
+func GetImplicitPrefix(options []*MarshallingOption) AddrPrefixInterface {
+	for _, opt := range options {
+		if opt != nil && opt.ImplicitPrefix != nil {
+			return opt.ImplicitPrefix
+		}
+	}
+
+	return nil
 }
 
 func IsAddPathEnabled(decode bool, f RouteFamily, options []*MarshallingOption) bool {
@@ -1000,10 +1013,26 @@ func (c *CapFQDN) DecodeFromBytes(data []byte) error {
 	if len(data) < 2 {
 		return NewMessageError(BGP_ERROR_OPEN_MESSAGE_ERROR, BGP_ERROR_SUB_UNSUPPORTED_CAPABILITY, nil, "Not all CapabilityFQDN bytes allowed")
 	}
+	rest := len(data)
+	if rest < 1 {
+		return NewMessageError(BGP_ERROR_OPEN_MESSAGE_ERROR, BGP_ERROR_SUB_UNSUPPORTED_CAPABILITY, nil, "Not all CapabilityFQDN bytes allowed")
+	}
 	hostNameLen := uint8(data[0])
+	rest -= 1
 	c.HostNameLen = hostNameLen
+	if rest < int(hostNameLen) {
+		return NewMessageError(BGP_ERROR_OPEN_MESSAGE_ERROR, BGP_ERROR_SUB_UNSUPPORTED_CAPABILITY, nil, "Not all CapabilityFQDN bytes allowed")
+	}
 	c.HostName = string(data[1 : c.HostNameLen+1])
+	rest -= int(hostNameLen)
+	if rest < 1 {
+		return NewMessageError(BGP_ERROR_OPEN_MESSAGE_ERROR, BGP_ERROR_SUB_UNSUPPORTED_CAPABILITY, nil, "Not all CapabilityFQDN bytes allowed")
+	}
+	rest -= 1
 	domainNameLen := uint8(data[c.HostNameLen+1])
+	if rest < int(domainNameLen) {
+		return NewMessageError(BGP_ERROR_OPEN_MESSAGE_ERROR, BGP_ERROR_SUB_UNSUPPORTED_CAPABILITY, nil, "Not all CapabilityFQDN bytes allowed")
+	}
 	c.DomainNameLen = domainNameLen
 	c.DomainName = string(data[c.HostNameLen+2:])
 	return nil
@@ -1064,6 +1093,9 @@ func (c *CapSoftwareVersion) DecodeFromBytes(data []byte) error {
 		return NewMessageError(BGP_ERROR_OPEN_MESSAGE_ERROR, BGP_ERROR_SUB_UNSUPPORTED_CAPABILITY, nil, "Not all CapabilitySoftwareVersion bytes allowed")
 	}
 	softwareVersionLen := uint8(data[0])
+	if len(data[1:]) < int(softwareVersionLen) || softwareVersionLen > 64 {
+		return NewMessageError(BGP_ERROR_OPEN_MESSAGE_ERROR, BGP_ERROR_SUB_UNSUPPORTED_CAPABILITY, nil, "invalid length of software version capablity")
+	}
 	c.SoftwareVersionLen = softwareVersionLen
 	c.SoftwareVersion = string(data[1:c.SoftwareVersionLen])
 	return nil
@@ -1764,7 +1796,7 @@ func GetRouteDistinguisher(data []byte) RouteDistinguisherInterface {
 func parseRdAndRt(input string) ([]string, error) {
 	elems := _regexpRouteDistinguisher.FindStringSubmatch(input)
 	if len(elems) != 11 {
-		return nil, errors.New("failed to parse")
+		return nil, fmt.Errorf("failed to parse RD %q", input)
 	}
 	return elems, nil
 }
@@ -1788,6 +1820,29 @@ func ParseRouteDistinguisher(rd string) (RouteDistinguisherInterface, error) {
 		asn := fst<<16 | snd
 		return NewRouteDistinguisherFourOctetAS(uint32(asn), uint16(assigned)), nil
 	}
+}
+
+// ParseVPNPrefix parses VPNv4/VPNv6 prefix.
+func ParseVPNPrefix(prefix string) (RouteDistinguisherInterface, net.IP, *net.IPNet, error) {
+	elems := strings.SplitN(prefix, ":", 3)
+	if len(elems) < 3 {
+		return nil, nil, nil, fmt.Errorf("invalid VPN prefix format: %q", prefix)
+	}
+
+	rd, err := ParseRouteDistinguisher(elems[0] + ":" + elems[1])
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	addr, network, err := net.ParseCIDR(elems[2])
+	return rd, addr, network, err
+}
+
+// ContainsCIDR checks if one IPNet is a subnet of another.
+func ContainsCIDR(n1, n2 *net.IPNet) bool {
+	ones1, _ := n1.Mask.Size()
+	ones2, _ := n2.Mask.Size()
+	return ones1 <= ones2 && n1.Contains(n2.IP)
 }
 
 //
@@ -9568,33 +9623,70 @@ func GetRouteFamily(name string) (RouteFamily, error) {
 func NewPrefixFromRouteFamily(afi uint16, safi uint8, prefixStr ...string) (prefix AddrPrefixInterface, err error) {
 	family := AfiSafiToRouteFamily(afi, safi)
 
-	f := func(s string) AddrPrefixInterface {
-		addr, net, _ := net.ParseCIDR(s)
+	f := func(s string) (AddrPrefixInterface, error) {
+		addr, net, err := net.ParseCIDR(s)
+		if err != nil {
+			return nil, err
+		}
 		len, _ := net.Mask.Size()
 		switch family {
 		case RF_IPv4_UC, RF_IPv4_MC:
-			return NewIPAddrPrefix(uint8(len), addr.String())
+			return NewIPAddrPrefix(uint8(len), addr.String()), nil
 		}
-		return NewIPv6AddrPrefix(uint8(len), addr.String())
+		return NewIPv6AddrPrefix(uint8(len), addr.String()), nil
 	}
 
 	switch family {
 	case RF_IPv4_UC, RF_IPv4_MC:
 		if len(prefixStr) > 0 {
-			prefix = f(prefixStr[0])
+			prefix, err = f(prefixStr[0])
 		} else {
 			prefix = NewIPAddrPrefix(0, "")
 		}
 	case RF_IPv6_UC, RF_IPv6_MC:
 		if len(prefixStr) > 0 {
-			prefix = f(prefixStr[0])
+			prefix, err = f(prefixStr[0])
 		} else {
 			prefix = NewIPv6AddrPrefix(0, "")
 		}
 	case RF_IPv4_VPN:
-		prefix = NewLabeledVPNIPAddrPrefix(0, "", *NewMPLSLabelStack(), nil)
+		if len(prefixStr) == 0 {
+			prefix = NewLabeledVPNIPAddrPrefix(0, "", *NewMPLSLabelStack(), nil)
+			break
+		}
+
+		rd, addr, network, err := ParseVPNPrefix(prefixStr[0])
+		if err != nil {
+			return nil, err
+		}
+
+		length, _ := network.Mask.Size()
+
+		prefix = NewLabeledVPNIPAddrPrefix(
+			uint8(length),
+			addr.String(),
+			*NewMPLSLabelStack(),
+			rd,
+		)
 	case RF_IPv6_VPN:
-		prefix = NewLabeledVPNIPv6AddrPrefix(0, "", *NewMPLSLabelStack(), nil)
+		if len(prefixStr) == 0 {
+			prefix = NewLabeledVPNIPv6AddrPrefix(0, "", *NewMPLSLabelStack(), nil)
+			break
+		}
+
+		rd, addr, network, err := ParseVPNPrefix(prefixStr[0])
+		if err != nil {
+			return nil, err
+		}
+
+		length, _ := network.Mask.Size()
+
+		prefix = NewLabeledVPNIPv6AddrPrefix(
+			uint8(length),
+			addr.String(),
+			*NewMPLSLabelStack(),
+			rd,
+		)
 	case RF_IPv4_MPLS:
 		prefix = NewLabeledIPAddrPrefix(0, "", *NewMPLSLabelStack())
 	case RF_IPv6_MPLS:
@@ -9956,9 +10048,6 @@ func (p *PathAttribute) DecodeFromBytes(data []byte, options ...*MarshallingOpti
 	}
 	p.Flags = BGPAttrFlag(data[0])
 	p.Type = BGPAttrType(data[1])
-	if eMsg := validatePathAttributeFlags(p.Type, p.Flags); eMsg != "" {
-		return nil, NewMessageError(eCode, BGP_ERROR_SUB_ATTRIBUTE_FLAGS_ERROR, data, eMsg)
-	}
 
 	if p.Flags&BGP_ATTR_FLAG_EXTENDED_LENGTH != 0 {
 		if len(data) < 4 {
@@ -9975,6 +10064,10 @@ func (p *PathAttribute) DecodeFromBytes(data []byte, options ...*MarshallingOpti
 	}
 	if len(data) < int(p.Length) {
 		return nil, NewMessageError(eCode, eSubCode, data, "attribute value length is short")
+	}
+
+	if eMsg := validatePathAttributeFlags(p.Type, p.Flags); eMsg != "" {
+		return nil, NewMessageError(eCode, BGP_ERROR_SUB_ATTRIBUTE_FLAGS_ERROR, data, eMsg)
 	}
 
 	return data[:p.Length], nil
@@ -10367,7 +10460,7 @@ func (p *PathAttributeAsPath) String() string {
 	for _, param := range p.Value {
 		params = append(params, param.String())
 	}
-	return strings.Join(params, " ")
+	return "{AsPath: " + strings.Join(params, " ") + "}"
 }
 
 func (p *PathAttributeAsPath) MarshalJSON() ([]byte, error) {
@@ -10952,19 +11045,35 @@ func (p *PathAttributeMpReachNLRI) DecodeFromBytes(data []byte, options ...*Mars
 	if p.Length < 3 {
 		return NewMessageError(eCode, eSubCode, value, "mpreach header length is short")
 	}
-	afi := binary.BigEndian.Uint16(value[0:2])
-	safi := value[2]
+
+	var afi uint16
+	var safi uint8
+
+	// In MRT dumps, AFI+SAFI+NLRI is implicit based on RIB Entry Header, see RFC 6396 4.3.4
+	implicitPrefix := GetImplicitPrefix(options)
+	if implicitPrefix == nil {
+		afi = binary.BigEndian.Uint16(value[0:2])
+		safi = value[2]
+
+		value = value[3:]
+	} else {
+		afi = implicitPrefix.AFI()
+		safi = implicitPrefix.SAFI()
+
+		p.Value = []AddrPrefixInterface{implicitPrefix}
+	}
+
 	p.AFI = afi
 	p.SAFI = safi
 	_, err = NewPrefixFromRouteFamily(afi, safi)
 	if err != nil {
 		return NewMessageError(eCode, BGP_ERROR_SUB_INVALID_NETWORK_FIELD, eData, err.Error())
 	}
-	nexthoplen := int(value[3])
-	if len(value) < 4+nexthoplen {
+	nexthoplen := int(value[0])
+	if len(value) < 1+nexthoplen {
 		return NewMessageError(eCode, eSubCode, value, "mpreach nexthop length is short")
 	}
-	nexthopbin := value[4 : 4+nexthoplen]
+	nexthopbin := value[1 : 1+nexthoplen]
 	if nexthoplen > 0 {
 		v4addrlen := 4
 		v6addrlen := 16
@@ -10984,7 +11093,13 @@ func (p *PathAttributeMpReachNLRI) DecodeFromBytes(data []byte, options ...*Mars
 			return NewMessageError(eCode, eSubCode, value, "mpreach nexthop length is incorrect")
 		}
 	}
-	value = value[4+nexthoplen:]
+
+	// NLRI implicit for MRT dumps
+	if implicitPrefix != nil {
+		return nil
+	}
+
+	value = value[1+nexthoplen:]
 	// skip reserved
 	if len(value) == 0 {
 		return NewMessageError(eCode, eSubCode, value, "no skip byte")
@@ -11030,27 +11145,40 @@ func (p *PathAttributeMpReachNLRI) Serialize(options ...*MarshallingOption) ([]b
 	if p.LinkLocalNexthop != nil && p.LinkLocalNexthop.IsLinkLocalUnicast() {
 		nexthoplen = BGP_ATTR_NHLEN_IPV6_GLOBAL_AND_LL
 	}
-	buf := make([]byte, 4+nexthoplen)
-	binary.BigEndian.PutUint16(buf[0:], afi)
-	buf[2] = safi
-	buf[3] = uint8(nexthoplen)
+	var buf []byte
+	includeNLRI := GetImplicitPrefix(options) == nil
+	if includeNLRI {
+		family := make([]byte, 3)
+		binary.BigEndian.PutUint16(family[0:], afi)
+		family[2] = safi
+
+		buf = append(buf, family...)
+	}
+	buf = append(buf, uint8(nexthoplen))
 	if nexthoplen != 0 {
+		nexthop := make([]byte, nexthoplen)
+
 		if p.Nexthop.To4() == nil {
-			copy(buf[4+offset:], p.Nexthop.To16())
+			copy(nexthop[offset:], p.Nexthop.To16())
+
 			if nexthoplen == BGP_ATTR_NHLEN_IPV6_GLOBAL_AND_LL {
-				copy(buf[4+offset+16:], p.LinkLocalNexthop.To16())
+				copy(nexthop[offset+16:], p.LinkLocalNexthop.To16())
 			}
 		} else {
-			copy(buf[4+offset:], p.Nexthop)
+			copy(nexthop[offset:], p.Nexthop)
 		}
+
+		buf = append(buf, nexthop...)
 	}
-	buf = append(buf, 0)
-	for _, prefix := range p.Value {
-		pbuf, err := prefix.Serialize(options...)
-		if err != nil {
-			return nil, err
+	if includeNLRI {
+		buf = append(buf, 0)
+		for _, prefix := range p.Value {
+			pbuf, err := prefix.Serialize(options...)
+			if err != nil {
+				return nil, err
+			}
+			buf = append(buf, pbuf...)
 		}
-		buf = append(buf, pbuf...)
 	}
 	return p.PathAttribute.Serialize(buf, options...)
 }

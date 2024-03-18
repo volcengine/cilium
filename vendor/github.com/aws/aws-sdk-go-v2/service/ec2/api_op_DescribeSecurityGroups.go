@@ -19,14 +19,7 @@ import (
 	"time"
 )
 
-// Describes the specified security groups or all of your security groups. A
-// security group is for use with instances either in the EC2-Classic platform or
-// in a specific VPC. For more information, see Amazon EC2 security groups (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-network-security.html)
-// in the Amazon Elastic Compute Cloud User Guide and Security groups for your VPC (https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_SecurityGroups.html)
-// in the Amazon Virtual Private Cloud User Guide. We are retiring EC2-Classic. We
-// recommend that you migrate from EC2-Classic to a VPC. For more information, see
-// Migrate from EC2-Classic to a VPC (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/vpc-migrate.html)
-// in the Amazon Elastic Compute Cloud User Guide.
+// Describes the specified security groups or all of your security groups.
 func (c *Client) DescribeSecurityGroups(ctx context.Context, params *DescribeSecurityGroupsInput, optFns ...func(*Options)) (*DescribeSecurityGroupsOutput, error) {
 	if params == nil {
 		params = &DescribeSecurityGroupsInput{}
@@ -106,10 +99,9 @@ type DescribeSecurityGroupsInput struct {
 	// VPC. Default: Describes all of your security groups.
 	GroupIds []string
 
-	// [EC2-Classic and default VPC only] The names of the security groups. You can
-	// specify either the security group name or the security group ID. For security
-	// groups in a nondefault VPC, use the group-name filter to describe security
-	// groups by name. Default: Describes all of your security groups.
+	// [Default VPC] The names of the security groups. You can specify either the
+	// security group name or the security group ID. Default: Describes all of your
+	// security groups.
 	GroupNames []string
 
 	// The maximum number of items to return for this request. To get the next page of
@@ -142,12 +134,22 @@ type DescribeSecurityGroupsOutput struct {
 }
 
 func (c *Client) addOperationDescribeSecurityGroupsMiddlewares(stack *middleware.Stack, options Options) (err error) {
+	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
+		return err
+	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpDescribeSecurityGroups{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpDescribeSecurityGroups{}, middleware.After)
 	if err != nil {
+		return err
+	}
+	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeSecurityGroups"); err != nil {
+		return fmt.Errorf("add protocol finalizers: %v", err)
+	}
+
+	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -168,22 +170,22 @@ func (c *Client) addOperationDescribeSecurityGroupsMiddlewares(stack *middleware
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
-	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
-		return err
-	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack); err != nil {
+	if err = addClientUserAgent(stack, options); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
+		return err
+	}
+	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeSecurityGroups(options.Region), middleware.Before); err != nil {
@@ -199,6 +201,9 @@ func (c *Client) addOperationDescribeSecurityGroupsMiddlewares(stack *middleware
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
+		return err
+	}
+	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -481,7 +486,6 @@ func newServiceMetadataMiddleware_opDescribeSecurityGroups(region string) *awsmi
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
-		SigningName:   "ec2",
 		OperationName: "DescribeSecurityGroups",
 	}
 }

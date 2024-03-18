@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
 	"sigs.k8s.io/gateway-api/conformance/utils/suite"
 )
@@ -43,7 +43,6 @@ var GatewayModifyListeners = suite.ConformanceTest{
 	},
 	Manifests: []string{"tests/gateway-modify-listeners.yaml"},
 	Test: func(t *testing.T, s *suite.ConformanceTestSuite) {
-
 		t.Run("should be able to add a listener that then becomes available for routing traffic", func(t *testing.T) {
 			gwNN := types.NamespacedName{Name: "gateway-add-listener", Namespace: "gateway-conformance-infra"}
 			ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
@@ -51,26 +50,27 @@ var GatewayModifyListeners = suite.ConformanceTest{
 
 			namespaces := []string{"gateway-conformance-infra"}
 			kubernetes.NamespacesMustBeReady(t, s.Client, s.TimeoutConfig, namespaces)
-			original := &v1beta1.Gateway{}
+
+			// verify that the implementation is tracking the most recent resource changes
+			kubernetes.GatewayMustHaveLatestConditions(t, s.Client, s.TimeoutConfig, gwNN)
+
+			original := &v1.Gateway{}
 			err := s.Client.Get(ctx, gwNN, original)
 			require.NoErrorf(t, err, "error getting Gateway: %v", err)
 
-			// verify that the implementation is tracking the most recent resource changes
-			kubernetes.GatewayMustHaveLatestConditions(t, s.TimeoutConfig, original)
-
-			all := v1beta1.NamespacesFromAll
+			all := v1.NamespacesFromAll
 
 			mutate := original.DeepCopy()
 
 			// add a new listener to the Gateway spec
-			hostname := v1beta1.Hostname("data.test.com")
-			mutate.Spec.Listeners = append(mutate.Spec.Listeners, v1beta1.Listener{
+			hostname := v1.Hostname("data.test.com")
+			mutate.Spec.Listeners = append(mutate.Spec.Listeners, v1.Listener{
 				Name:     "http",
 				Port:     80,
-				Protocol: v1beta1.HTTPProtocolType,
+				Protocol: v1.HTTPProtocolType,
 				Hostname: &hostname,
-				AllowedRoutes: &v1beta1.AllowedRoutes{
-					Namespaces: &v1beta1.RouteNamespaces{From: &all},
+				AllowedRoutes: &v1.AllowedRoutes{
+					Namespaces: &v1.RouteNamespaces{From: &all},
 				},
 			})
 
@@ -79,35 +79,46 @@ var GatewayModifyListeners = suite.ConformanceTest{
 
 			// Ensure the generation and observedGeneration sync up
 			kubernetes.NamespacesMustBeReady(t, s.Client, s.TimeoutConfig, namespaces)
-			updated := &v1beta1.Gateway{}
-			err = s.Client.Get(ctx, gwNN, updated)
-			require.NoErrorf(t, err, "error getting Gateway: %v", err)
 
-			listeners := []v1beta1.ListenerStatus{
+			listeners := []v1.ListenerStatus{
 				{
-					Name: v1beta1.SectionName("https"),
-					SupportedKinds: []v1beta1.RouteGroupKind{{
-						Group: (*v1beta1.Group)(&v1beta1.GroupVersion.Group),
-						Kind:  v1beta1.Kind("HTTPRoute"),
+					Name: v1.SectionName("https"),
+					SupportedKinds: []v1.RouteGroupKind{{
+						Group: (*v1.Group)(&v1.GroupVersion.Group),
+						Kind:  v1.Kind("HTTPRoute"),
 					}},
-					Conditions: []metav1.Condition{{
-						Type:   string(v1beta1.ListenerConditionAccepted),
-						Status: metav1.ConditionTrue,
-						Reason: "", //any reason
-					}},
+					Conditions: []metav1.Condition{
+						{
+							Type:   string(v1.ListenerConditionAccepted),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+						{
+							Type:   string(v1.ListenerConditionResolvedRefs),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+					},
 					AttachedRoutes: 1,
 				},
 				{
-					Name: v1beta1.SectionName("http"),
-					SupportedKinds: []v1beta1.RouteGroupKind{{
-						Group: (*v1beta1.Group)(&v1beta1.GroupVersion.Group),
-						Kind:  v1beta1.Kind("HTTPRoute"),
+					Name: v1.SectionName("http"),
+					SupportedKinds: []v1.RouteGroupKind{{
+						Group: (*v1.Group)(&v1.GroupVersion.Group),
+						Kind:  v1.Kind("HTTPRoute"),
 					}},
-					Conditions: []metav1.Condition{{
-						Type:   string(v1beta1.ListenerConditionAccepted),
-						Status: metav1.ConditionTrue,
-						Reason: "", //any reason
-					}},
+					Conditions: []metav1.Condition{
+						{
+							Type:   string(v1.ListenerConditionAccepted),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+						{
+							Type:   string(v1.ListenerConditionResolvedRefs),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+					},
 					AttachedRoutes: 1,
 				},
 			}
@@ -115,7 +126,11 @@ var GatewayModifyListeners = suite.ConformanceTest{
 			kubernetes.GatewayStatusMustHaveListeners(t, s.Client, s.TimeoutConfig, gwNN, listeners)
 
 			// verify that the implementation continues to keep up to date with the resource changes we've been making
-			kubernetes.GatewayMustHaveLatestConditions(t, s.TimeoutConfig, updated)
+			kubernetes.GatewayMustHaveLatestConditions(t, s.Client, s.TimeoutConfig, gwNN)
+
+			updated := &v1.Gateway{}
+			err = s.Client.Get(ctx, gwNN, updated)
+			require.NoErrorf(t, err, "error getting Gateway: %v", err)
 
 			require.NotEqual(t, original.Generation, updated.Generation, "generation should change after an update")
 		})
@@ -127,18 +142,19 @@ var GatewayModifyListeners = suite.ConformanceTest{
 
 			namespaces := []string{"gateway-conformance-infra"}
 			kubernetes.NamespacesMustBeReady(t, s.Client, s.TimeoutConfig, namespaces)
-			original := &v1beta1.Gateway{}
-			err := s.Client.Get(ctx, gwNN, original)
-			require.NoErrorf(t, err, "error getting Gateway: %v", err)
 
 			// verify that the implementation is tracking the most recent resource changes
-			kubernetes.GatewayMustHaveLatestConditions(t, s.TimeoutConfig, original)
+			kubernetes.GatewayMustHaveLatestConditions(t, s.Client, s.TimeoutConfig, gwNN)
+
+			original := &v1.Gateway{}
+			err := s.Client.Get(ctx, gwNN, original)
+			require.NoErrorf(t, err, "error getting Gateway: %v", err)
 
 			mutate := original.DeepCopy()
 			require.Equalf(t, 2, len(mutate.Spec.Listeners), "the gateway must have 2 listeners")
 
 			// remove the "https" Gateway listener, leaving only the "http" listener
-			var newListeners []v1beta1.Listener
+			var newListeners []v1.Listener
 			for _, listener := range mutate.Spec.Listeners {
 				if listener.Name == "http" {
 					newListeners = append(newListeners, listener)
@@ -151,22 +167,26 @@ var GatewayModifyListeners = suite.ConformanceTest{
 
 			// Ensure the generation and observedGeneration sync up
 			kubernetes.NamespacesMustBeReady(t, s.Client, s.TimeoutConfig, namespaces)
-			updated := &v1beta1.Gateway{}
-			err = s.Client.Get(ctx, gwNN, updated)
-			require.NoErrorf(t, err, "error getting Gateway: %v", err)
 
-			listeners := []v1beta1.ListenerStatus{
+			listeners := []v1.ListenerStatus{
 				{
-					Name: v1beta1.SectionName("http"),
-					SupportedKinds: []v1beta1.RouteGroupKind{{
-						Group: (*v1beta1.Group)(&v1beta1.GroupVersion.Group),
-						Kind:  v1beta1.Kind("HTTPRoute"),
+					Name: v1.SectionName("http"),
+					SupportedKinds: []v1.RouteGroupKind{{
+						Group: (*v1.Group)(&v1.GroupVersion.Group),
+						Kind:  v1.Kind("HTTPRoute"),
 					}},
-					Conditions: []metav1.Condition{{
-						Type:   string(v1beta1.ListenerConditionAccepted),
-						Status: metav1.ConditionTrue,
-						Reason: "", //any reason
-					}},
+					Conditions: []metav1.Condition{
+						{
+							Type:   string(v1.ListenerConditionAccepted),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+						{
+							Type:   string(v1.ListenerConditionResolvedRefs),
+							Status: metav1.ConditionTrue,
+							Reason: "", // any reason
+						},
+					},
 					AttachedRoutes: 1,
 				},
 			}
@@ -174,7 +194,11 @@ var GatewayModifyListeners = suite.ConformanceTest{
 			kubernetes.GatewayStatusMustHaveListeners(t, s.Client, s.TimeoutConfig, gwNN, listeners)
 
 			// verify that the implementation continues to keep up to date with the resource changes we've been making
-			kubernetes.GatewayMustHaveLatestConditions(t, s.TimeoutConfig, updated)
+			kubernetes.GatewayMustHaveLatestConditions(t, s.Client, s.TimeoutConfig, gwNN)
+
+			updated := &v1.Gateway{}
+			err = s.Client.Get(ctx, gwNN, updated)
+			require.NoErrorf(t, err, "error getting Gateway: %v", err)
 
 			require.NotEqual(t, original.Generation, updated.Generation, "generation should change after an update")
 		})
