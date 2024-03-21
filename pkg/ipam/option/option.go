@@ -55,3 +55,17 @@ const ENIPDBlockSizeIPv4 = 16
 
 // PoolDefault is the default IP pool from which to allocate.
 const PoolDefault = "default"
+
+var (
+	ipamCRDSupportModes = map[string]struct{}{
+		IPAMENI:          {},
+		IPAMAzure:        {},
+		IPAMAlibabaCloud: {},
+		IPAMVolcengine:   {},
+	}
+)
+
+func IsCloudIPAMMode(mode string) bool {
+	_, ok := ipamCRDSupportModes[mode]
+	return ok
+}

@@ -238,6 +238,19 @@ func deriveVpcCIDRs(node *ciliumv2.CiliumNode) (primaryCIDR *cidr.CIDR, secondar
 			return
 		}
 	}
+	// return Volcengine vpc CIDR
+	if len(node.Status.Volcengine.ENIS) > 0 {
+		if c, err := cidr.ParseCIDR(node.Spec.Volcengine.CIDRBlock); err == nil {
+			primaryCIDR = c
+		}
+		for _, eni := range node.Status.Volcengine.ENIS {
+			for _, sc := range eni.VPC.SecondaryCIDRBlocks {
+				if c, err := cidr.ParseCIDR(sc); err == nil {
+					secondaryCIDRs = append(secondaryCIDRs, c)
+				}
+			}
+		}
+	}
 	return
 }
 
@@ -309,7 +322,7 @@ func (n *nodeStore) hasMinimumIPsInPool() (minimumReached bool, required, numAva
 			minimumReached = true
 		}
 
-		if n.conf.IPAMMode() == ipamOption.IPAMENI || n.conf.IPAMMode() == ipamOption.IPAMAzure || n.conf.IPAMMode() == ipamOption.IPAMAlibabaCloud {
+		if ipamOption.IsCloudIPAMMode(n.conf.IPAMMode()) {
 			if !n.autoDetectIPv4NativeRoutingCIDR() {
 				minimumReached = false
 			}
