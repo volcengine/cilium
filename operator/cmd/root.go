@@ -515,7 +515,8 @@ func (legacy *legacyOnLeader) onStart(_ cell.HookContext) error {
 		ipamOption.IPAMENI,
 		ipamOption.IPAMClusterPool,
 		ipamOption.IPAMMultiPool,
-		ipamOption.IPAMAlibabaCloud:
+		ipamOption.IPAMAlibabaCloud,
+		ipamOption.IPAMVolcengine:
 		alloc, providerBuiltin := allocatorProviders[ipamMode]
 		if !providerBuiltin {
 			log.Fatalf("%s allocator is not supported by this version of %s", ipamMode, binaryName)
