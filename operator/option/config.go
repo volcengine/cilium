@@ -461,6 +461,9 @@ type OperatorConfig struct {
 	// VolcengineVPCID allow user to specific vpc
 	VolcengineVPCID string
 
+	// VolcengineSTSAssumeRole is the role to assume when retrieving Volcengine API credentials.
+	VolcengineSTSAssumeRole string
+
 	// VolcengineReleaseExcessIPs allows releasing excess free IP addresses from ENI.
 	// Enabling this option reduces waste of IP addresses but may increase
 	// the number of API calls to Volcengine EC2 service.

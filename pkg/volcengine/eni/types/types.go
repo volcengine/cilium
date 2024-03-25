@@ -4,8 +4,18 @@
 package types
 
 import (
-	"github.com/cilium/cilium/pkg/ipam/types"
 	"github.com/spf13/cast"
+
+	"github.com/cilium/cilium/pkg/ipam/types"
+)
+
+const (
+	ENIStatusInUse     = "InUse"
+	ENIStatusAvailable = "Available"
+	ENIStatusAttaching = "Attaching"
+	ENIStatusDetaching = "Detaching"
+	ENIStatusCreating  = "Creating"
+	ENIStatusDeleting  = "Deleting"
 )
 
 // Spec is the ENI specification of a node. This specification is considered

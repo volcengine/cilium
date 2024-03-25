@@ -178,3 +178,15 @@ func (client *Metadata) InterfaceInfo(ctx context.Context, mac string) (*Interfa
 	}
 	return &nicInfo, err
 }
+
+func (client *Metadata) GetSTSCredential(ctx context.Context, role string) (string, error) {
+	if len(role) == 0 {
+		return "", fmt.Errorf("invalid role name")
+	}
+	data, err := client.getMetadata(ctx, "iam/security_credentials"+role)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
+}
