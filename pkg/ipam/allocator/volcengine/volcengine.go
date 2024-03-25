@@ -7,6 +7,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/volcengine/volcengine-go-sdk/volcengine"
+	"github.com/volcengine/volcengine-go-sdk/volcengine/credentials"
+
 	operatorMetrics "github.com/cilium/cilium/operator/metrics"
 	operatorOption "github.com/cilium/cilium/operator/option"
 	apiMetrics "github.com/cilium/cilium/pkg/api/metrics"
@@ -22,13 +25,12 @@ import (
 	"github.com/cilium/cilium/pkg/volcengine/constant"
 	"github.com/cilium/cilium/pkg/volcengine/eni"
 	"github.com/cilium/cilium/pkg/volcengine/eni/limits"
-	"github.com/cilium/cilium/pkg/volcengine/metadata"
 )
 
 var log = logging.DefaultLogger.WithField(logfields.LogSubsys, "ipam-allocator-volcengine")
 
 type AllocatorVolcengine struct {
-	client    api.VolcengineClient
+	client    *api.Client
 	eniGCTags map[string]string
 }
 
@@ -61,21 +63,32 @@ func (a *AllocatorVolcengine) Init(ctx context.Context) (err error) {
 		metric = apiMetrics.NewPrometheusMetrics(metrics.Namespace, constant.Volcengine, operatorMetrics.Registry)
 	}
 
+	metadata := api.NewMetadata()
+
 	vpcID := cfg.VolcengineVPCID
 	if len(vpcID) < 1 {
-		if vpcID, err = metadata.GetVPCID(ctx); err != nil {
+		if vpcID, err = metadata.VPCID(ctx); err != nil {
 			log.Debugf("get vpc id from metadata of Volcengine failed: %v", err)
 			return err
 		}
 	}
-	regionID, err := metadata.GetRegionID(ctx)
+	regionID, err := metadata.Region(ctx)
 	if err != nil {
 		log.Debugf("get region id from metadata of Volcengine failed: %v", err)
 		return err
 	}
+	//TODO: create credential form ak/sk and sts role
+	var cred *credentials.Credentials
 
-	a.client, err = api.NewClient(regionID, vpcID, metric, cfg.IPAMAPIQPSLimit, cfg.IPAMAPIBurst,
-		map[string]string{constant.TagKeyVPCID: vpcID})
+	cred = credentials.NewEnvCredentials()
+	config := volcengine.NewConfig().WithRegion(regionID).
+		WithExtraUserAgent(volcengine.String("cilium-operator")).
+		WithDisableSSL(true).
+		WithLogger(volcengine.NewDefaultLogger()) //TODO: unify logger
+	config.WithCredentials(cred)
+
+	a.client, err = api.NewClient("default", config, metric, cfg.IPAMAPIQPSLimit, cfg.IPAMAPIBurst,
+		map[string]string{}, map[string]string{}, map[string]string{}, map[string]string{})
 	if err != nil {
 		log.Debugf("create client by %s.%s of Volcengine fialed: %v", regionID, vpcID, err)
 		return err
