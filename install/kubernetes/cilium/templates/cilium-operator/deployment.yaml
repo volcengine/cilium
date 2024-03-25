@@ -132,6 +132,20 @@ spec:
               key: ALIBABA_CLOUD_ACCESS_KEY_SECRET
               optional: true
         {{- end }}
+        {{- if .Values.volcengine.enabled }}
+        - name: VOLCSTACK_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cilium-volcengine
+              key: VOLCSTACK_ACCESS_KEY
+              optional: true
+        - name: VOLCSTACK_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cilium-volcengine
+              key: VOLCSTACK_SECRET_KEY
+              optional: true
+        {{- end }}
         {{- if .Values.k8sServiceHost }}
         - name: KUBERNETES_SERVICE_HOST
           value: {{ .Values.k8sServiceHost | quote }}
