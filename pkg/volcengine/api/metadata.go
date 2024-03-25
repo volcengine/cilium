@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/cilium/cilium/pkg/safeio"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	DefaultURL     = "http://100.96.0.96/latest/"
+	DefaultURL     = "http://100.96.0.96/latest"
 	DefaultTimeout = 10 * time.Second
 )
 
@@ -49,9 +50,12 @@ func NewMetadata() *Metadata {
 
 // getMetadata get information from metadata by path.
 func (client *Metadata) getMetadata(ctx context.Context, path string) ([]byte, error) {
-	url := fmt.Sprintf("%s/%s", client.metadataEndpoint, path)
+	metadataURL, err := url.JoinPath(client.metadataEndpoint, path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to join url path %v", path)
+	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, metadataURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create http request %v err: %w", *req, err)
 	}
@@ -183,7 +187,7 @@ func (client *Metadata) GetSTSCredential(ctx context.Context, role string) (stri
 	if len(role) == 0 {
 		return "", fmt.Errorf("invalid role name")
 	}
-	data, err := client.getMetadata(ctx, "iam/security_credentials"+role)
+	data, err := client.getMetadata(ctx, "iam/security_credentials/"+role)
 	if err != nil {
 		return "", err
 	}
