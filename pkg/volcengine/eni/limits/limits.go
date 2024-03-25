@@ -29,6 +29,6 @@ func Get(instanceType string) (limit ipamTypes.Limits, ok bool) {
 	return
 }
 
-func UpdateFromAPI(ctx context.Context, ec2 api.Client) error {
+func UpdateFromAPI(ctx context.Context, ec2 *api.Client) error {
 	return nil
 }
