@@ -21,14 +21,12 @@ import (
 	"github.com/cilium/cilium/pkg/volcengine/types"
 )
 
-var (
-	apiWriteBackoff = wait.Backoff{
-		Duration: time.Second * 4,
-		Factor:   1.5,
-		Jitter:   0.5,
-		Steps:    6,
-	}
-)
+var apiWriteBackoff = wait.Backoff{
+	Duration: time.Second * 4,
+	Factor:   1.5,
+	Jitter:   0.5,
+	Steps:    6,
+}
 
 type (
 	VolcengineAPI interface {
@@ -334,6 +332,9 @@ func (c *Client) GetInstances(ctx context.Context, vpcs ipamTypes.VirtualNetwork
 // GetSubnet returns subnet's information.
 func (c *Client) GetSubnet(ctx context.Context, id string) (*ipamTypes.Subnet, error) {
 	resp, err := c.describeSubnetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get subnet %v, err: %w", id, err)
+	}
 	cidrBlock, err := cidr.ParseCIDR(volcengine.StringValue(resp.CidrBlock))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse cidr block: %v, err: %w", *resp.CidrBlock, err)
