@@ -5,6 +5,7 @@ package limits
 
 import (
 	"context"
+	"maps"
 
 	ipamTypes "github.com/cilium/cilium/pkg/ipam/types"
 	"github.com/cilium/cilium/pkg/lock"
@@ -29,6 +30,17 @@ func Get(instanceType string) (limit ipamTypes.Limits, ok bool) {
 	return
 }
 
-func UpdateFromAPI(ctx context.Context, ec2 *api.Client) error {
+// UpdateFromAPI updates instance limits by calling Volcengine API.
+// see: https://www.volcengine.com/docs/6396/70840.
+func UpdateFromAPI(ctx context.Context, client *api.Client) error {
+	list, err := client.GetInstanceTypes(ctx)
+	if err != nil {
+		return err
+	}
+
+	limits.Lock()
+	defer limits.Unlock()
+	maps.Copy(limits.m, list)
+
 	return nil
 }
