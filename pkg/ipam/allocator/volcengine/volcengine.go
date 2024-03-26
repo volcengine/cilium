@@ -65,6 +65,8 @@ func (a *AllocatorVolcengine) Init(ctx context.Context) (err error) {
 
 	metadata := api.NewMetadata()
 
+	project := "default"
+
 	vpcID := cfg.VolcengineVPCID
 	if len(vpcID) < 1 {
 		if vpcID, err = metadata.VPCID(ctx); err != nil {
@@ -93,8 +95,8 @@ func (a *AllocatorVolcengine) Init(ctx context.Context) (err error) {
 		eniCreationTags = api.MergeTags(eniCreationTags, a.eniGCTags)
 	}
 
-	a.client, err = api.NewClient("default", config, metric, cfg.IPAMAPIQPSLimit, cfg.IPAMAPIBurst,
-		cfg.IPAMInstanceTags, eniCreationTags, map[string]string{}, map[string]string{})
+	a.client, err = api.NewClient(config, metric, cfg.IPAMAPIQPSLimit, cfg.IPAMAPIBurst,
+		project, vpcID, cfg.IPAMInstanceTags, eniCreationTags, nil)
 	if err != nil {
 		log.Debugf("create client by %s.%s of Volcengine fialed: %v", regionID, vpcID, err)
 		return err
