@@ -48,6 +48,7 @@ type (
 		AttachNetworkInterface(ctx context.Context, instanceID, eniID string) error
 		WaitENIAttached(ctx context.Context, eniID string) (string, error)
 		DeleteNetworkInterface(ctx context.Context, eniID string) error
+		GetDetachedNetworkInterfaces(ctx context.Context, tags ipamTypes.Tags, maxInterval time.Duration) ([]string, error)
 
 		IP
 	}
@@ -187,6 +188,28 @@ func (c *Client) DeleteNetworkInterface(ctx context.Context, eniID string) error
 	return c.deleteNetworkInterface(ctx, eniID)
 }
 
+// GetDetachedNetworkInterfaces returns all available interfaces that exceeds maxInterval since last updated time.
+func (c *Client) GetDetachedNetworkInterfaces(ctx context.Context, tags ipamTypes.Tags, maxInterval time.Duration) ([]string, error) {
+	interfaces, err := c.describeInterfaces(ctx, NewInterfaceTagFilters(tags))
+	if err != nil {
+		return nil, fmt.Errorf("failed to describe detached interfaces, err %v", err)
+	}
+
+	eniIDsTobeDeleted := make([]string, 0, len(interfaces))
+	for _, iface := range interfaces {
+		if volcengine.StringValue(iface.Status) == eniTypes.ENIStatusAvailable {
+			updateAt, err := time.Parse(time.RFC3339, volcengine.StringValue(iface.UpdatedAt))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse update time for interface")
+			}
+			if time.Since(updateAt) > maxInterval {
+				eniIDsTobeDeleted = append(eniIDsTobeDeleted, volcengine.StringValue(iface.NetworkInterfaceId))
+			}
+		}
+	}
+	return eniIDsTobeDeleted, nil
+}
+
 // AssignPrivateIPAddresses allocates a bunch of ipv4 addresses to network interfaces(ENI).
 func (c *Client) AssignPrivateIPAddresses(ctx context.Context, eniID string, toAllocate int) ([]string, error) {
 	resp, err := c.assignPrivateIPAddresses(ctx, eniID, toAllocate)
@@ -292,7 +315,7 @@ func (c *Client) GetInstances(ctx context.Context, vpcs ipamTypes.VirtualNetwork
 	if len(c.ecsTagFilters) > 0 {
 		networkInterfaces, err = c.describeInterfacesOfInstances(ctx)
 	} else {
-		networkInterfaces, err = c.describeInterfaces(ctx)
+		networkInterfaces, err = c.describeInterfaces(ctx, c.eniTagFilters)
 	}
 	if err != nil {
 		return nil, err
@@ -506,12 +529,12 @@ func (c *Client) describeInterfacesOfInstances(ctx context.Context) ([]*vpc.Netw
 	return results, nil
 }
 
-func (c *Client) describeInterfaces(ctx context.Context) ([]*vpc.NetworkInterfaceSetForDescribeNetworkInterfacesOutput, error) {
+func (c *Client) describeInterfaces(ctx context.Context, filters []*vpc.TagFilterForDescribeNetworkInterfacesInput) ([]*vpc.NetworkInterfaceSetForDescribeNetworkInterfacesOutput, error) {
 	results := make([]*vpc.NetworkInterfaceSetForDescribeNetworkInterfacesOutput, 0, 100)
 	input := &vpc.DescribeNetworkInterfacesInput{
 		MaxResults: volcengine.Int64(100),
 		//ProjectName: volcengine.String(c.projectName),
-		TagFilters: c.eniTagFilters,
+		TagFilters: filters,
 	}
 	c.limiter.Limit(ctx, "DescribeNetworkInterfaces")
 	resp, err := c.vpcClient.DescribeNetworkInterfaces(input)
