@@ -439,7 +439,7 @@ func (c *Client) describeSubnets(ctx context.Context) ([]*vpc.SubnetForDescribeS
 	}
 	result = append(result, resp.Subnets...)
 	input.NextToken = resp.NextToken
-	for input.NextToken != nil {
+	for len(volcengine.StringValue(input.NextToken)) > 0 {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -471,7 +471,7 @@ func (c *Client) describeInterfaceByInstanceId(ctx context.Context, instanceID s
 	}
 	result = append(result, resp.NetworkInterfaceSets...)
 	input.NextToken = resp.NextToken
-	for input.NextToken != nil {
+	for len(volcengine.StringValue(input.NextToken)) > 0 {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -510,7 +510,7 @@ func (c *Client) describeInterfacesOfInstances(ctx context.Context) ([]*vpc.Netw
 		results = append(results, enis...)
 	}
 	input.NextToken = resp.NextToken
-	for input.NextToken != nil {
+	for len(volcengine.StringValue(input.NextToken)) > 0 {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -548,7 +548,7 @@ func (c *Client) describeInterfaces(ctx context.Context, filters []*vpc.TagFilte
 	}
 	results = append(results, resp.NetworkInterfaceSets...)
 	input.NextToken = resp.NextToken
-	for input.NextToken != nil {
+	for len(volcengine.StringValue(input.NextToken)) > 0 {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -579,7 +579,7 @@ func (c *Client) describeVPCs(ctx context.Context) ([]*vpc.VpcForDescribeVpcsOut
 	result = append(result, resp.Vpcs...)
 
 	input.NextToken = resp.NextToken
-	for input.NextToken != nil {
+	for len(volcengine.StringValue(input.NextToken)) > 0 {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -609,7 +609,7 @@ func (c *Client) describeSecurityGroups(ctx context.Context) ([]*vpc.SecurityGro
 	}
 	result = append(result, resp.SecurityGroups...)
 	input.NextToken = resp.NextToken
-	for input.NextToken != nil {
+	for len(volcengine.StringValue(input.NextToken)) > 0 {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -638,7 +638,7 @@ func (c *Client) describeInstanceTypes(ctx context.Context) ([]*ecs.InstanceType
 	}
 	result = append(result, resp.InstanceTypes...)
 	input.NextToken = resp.NextToken
-	for input.NextToken != nil {
+	for len(volcengine.StringValue(input.NextToken)) > 0 {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
