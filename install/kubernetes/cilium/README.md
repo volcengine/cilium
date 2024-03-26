@@ -793,6 +793,10 @@ contributors across the globe, there is almost always someone available to help.
 | tunnelProtocol | string | `"vxlan"` | Tunneling protocol to use in tunneling mode and for ad-hoc tunnels. Possible values:   - ""   - vxlan   - geneve |
 | updateStrategy | object | `{"rollingUpdate":{"maxUnavailable":2},"type":"RollingUpdate"}` | Cilium agent update strategy |
 | volcengine.enabled | bool | `false` | Enable Volcengine ENI integration |
+| volcengine.eniGCInterval | string | `"5m"` | Interval for garbage collection of unattached ENIs. Set to "0s" to disable. |
+| volcengine.eniGCTags | object | `{"io.cilium/cilium-managed":"true,"io.cilium/cluster-name":"<auto-detected>"}` | Additional tags attached to ENIs created by Cilium. Dangling ENIs with this tag will be garbage collected |
+| volcengine.eniTags | object | `{}` | Tags to apply to the newly created ENIs |
+| volcengine.instanceTagsFilter | list | `[]` | Filter via Volcengine ECS Instance tags (k=v) which will dictate which Volcengine ECS Instances are going to be used to create new ENIs |
 | vtep.cidr | string | `""` | A space separated list of VTEP device CIDRs, for example "1.1.1.0/24 1.1.2.0/24" |
 | vtep.enabled | bool | `false` | Enables VXLAN Tunnel Endpoint (VTEP) Integration (beta) to allow Cilium-managed pods to talk to third party VTEP devices over Cilium tunnel. |
 | vtep.endpoint | string | `""` | A space separated list of VTEP device endpoint IPs, for example "1.1.1.1  1.1.2.1" |

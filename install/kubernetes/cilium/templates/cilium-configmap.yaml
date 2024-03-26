@@ -533,6 +533,18 @@ data:
 {{- if .Values.volcengine.enabled }}
   enable-endpoint-routes: "true"
   auto-create-cilium-node-resource: "true"
+{{- if .Values.volcengine.instanceTagsFilter }}
+  instance-tags-filter: {{ .Values.volcengine.instanceTagsFilter | join " " | quote }}
+{{- end }}
+{{- if .Values.volcengine.eniTags }}
+  volcengine-eni-tags: {{ .Values.volcengine.eniTags | toRawJson | quote }}
+{{- end }}
+{{- if .Values.volcengine.gcTags }}
+  volcengine-eni-gc-tags: {{ .Values.volcengine.eniGCTags | toRawJson | quote }}
+{{- end }}
+{{- if .Values.volcengine.gcInterval }}
+  volcengine-eni-gc-interval: {{ .Values.volcengine.eniGCInterval | quote }}
+{{- end }}
 {{- end }}
 
 {{- if hasKey .Values "l7Proxy" }}

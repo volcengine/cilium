@@ -840,3 +840,13 @@ func parseENI(iface *eniTypes.ENI, vpcs ipamTypes.VirtualNetworkMap, subnets ipa
 	}
 	return iface, nil
 }
+
+func MergeTags(tagMaps ...map[string]string) map[string]string {
+	tags := make(map[string]string)
+	for _, m := range tagMaps {
+		for k, v := range m {
+			tags[k] = v
+		}
+	}
+	return tags
+}

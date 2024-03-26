@@ -359,6 +359,18 @@ alibabacloud:
 volcengine:
   # -- Enable Volcengine ENI integration
   enabled: false
+  # -- Tags to apply to the newly created ENIs
+  eniTags: {}
+  # -- Interval for garbage collection of unattached ENIs. Set to "0s" to disable.
+  # @default -- `"5m"`
+  eniGCInterval: ""
+  # -- Additional tags attached to ENIs created by Cilium.
+  # Dangling ENIs with this tag will be garbage collected
+  # @default -- `{"io.cilium/cilium-managed":"true,"io.cilium/cluster-name":"<auto-detected>"}`
+  eniGCTags: {}
+  # -- Filter via Volcengine ECS Instance tags (k=v) which will dictate which Volcengine ECS Instances
+  # are going to be used to create new ENIs
+  instanceTagsFilter: []
 
 # -- Enable bandwidth manager to optimize TCP and UDP workloads and allow
 # for rate-limiting traffic from individual Pods with EDT (Earliest Departure

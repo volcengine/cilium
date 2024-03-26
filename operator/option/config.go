@@ -115,7 +115,7 @@ const (
 	// IPAMSubnetsTags are optional tags used to filter subnets, and interfaces within those subnets
 	IPAMSubnetsTags = "subnet-tags-filter"
 
-	// IPAMInstanceTagFilter are optional tags used to filter instances for ENI discovery ; only used with AWS IPAM mode for now
+	// IPAMInstanceTagFilter are optional tags used to filter instances for ENI discovery ; only used with AWS and Volcengine IPAM mode for now
 	IPAMInstanceTags = "instance-tags-filter"
 
 	// IPAMAutoCreateCiliumPodIPPools contains pre-defined IP pools to be auto-created on startup.
@@ -225,23 +225,26 @@ const (
 
 	// Volcengine options
 
+	// VolcengineENITags are the tags that will be added to every ENI created by the
+	// Volcengine ENI IPAM.
+	VolcengineENITags = "volcengine-eni-tags"
+
 	// VolcengineENIGCTags is a tag that will be added to every ENI
 	// created by the Volcengine ENI IPAM.
 	// Any stale and unattached ENIs with this tag will be garbage
 	// collected by the operator.
-	VolcengineENIGCTags = "eni-gc-tags"
+	VolcengineENIGCTags = "volcengine-eni-gc-tags"
 
 	// VolcengineENIGCInterval defines the interval of ENI GC
-	VolcengineENIGCInterval = "eni-gc-interval"
+	VolcengineENIGCInterval = "volcengine-eni-gc-interval"
 
 	// VolcengineVPCID allows user to specific vpc
-	VolcengineVPCID = "volcengine-cloud-vpc-id"
+	VolcengineVPCID = "volcengine-vpc-id"
 
 	// VolcengineReleaseExcessIPs allows releasing excess free IP addresses from ENI.
 	// Enabling this option reduces waste of IP addresses but may increase
 	// the number of API calls to AlibabaCloud ECS service.
-	VolcengineReleaseExcessIPs = "volcengine-cloud-release-excess-ips"
-	//volcengine-release-excess-ips
+	VolcengineReleaseExcessIPs = "volcengine-release-excess-ips"
 
 	// LoadBalancerL7 enables loadbalancer capabilities for services via envoy proxy
 	LoadBalancerL7 = "loadbalancer-l7"
@@ -449,6 +452,9 @@ type OperatorConfig struct {
 
 	// Volcengine options
 
+	// VolcengineENITags are the tags that will be added to every ENI created by the Volcengine ENI IPAM
+	VolcengineENITags map[string]string
+
 	// VolcengineENIGCTags is a tag that will be added to every ENI
 	// created by the Volcengine ENI IPAM.
 	// Any stale and unattached ENIs with this tag will be garbage
@@ -624,6 +630,11 @@ func (c *OperatorConfig) Populate(vp *viper.Viper) {
 		c.ENIGarbageCollectionTags = m
 	}
 
+	if m, err := command.GetStringMapStringE(vp, VolcengineENITags); err != nil {
+		log.Fatalf("unable to parse %s: %s", VolcengineENITags, err)
+	} else {
+		c.VolcengineENITags = m
+	}
 	if m, err := command.GetStringMapStringE(vp, VolcengineENIGCTags); err != nil {
 		log.Fatalf("unable to parse %s: %s", VolcengineENIGCTags, err)
 	} else {
@@ -647,5 +658,6 @@ var Config = &OperatorConfig{
 	ENITags:                        make(map[string]string),
 	ENIGarbageCollectionTags:       make(map[string]string),
 
+	VolcengineENITags:   make(map[string]string),
 	VolcengineENIGCTags: make(map[string]string),
 }
