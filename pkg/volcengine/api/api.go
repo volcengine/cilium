@@ -84,7 +84,7 @@ type TagFilters[T any] interface {
 func NewClient(project string, config *volcengine.Config, metric VolcengineMetric, qpsLimit float64, burst int,
 	ecsTags map[string]string, eniTags map[string]string, subnetTags map[string]string, sgTags map[string]string) (*Client, error) {
 	sess, err := session.NewSession(config)
-	if err == nil {
+	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 	return newClient(vpc.New(sess), ecs.New(sess), project, metric, qpsLimit, burst, NewInstanceTagFilters(ecsTags), NewInterfaceTagFilters(eniTags), NewSecurityGroupTagFilters(sgTags)), nil
