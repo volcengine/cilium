@@ -67,13 +67,13 @@ type (
 
 // Client implemented VolcengineClient for open api call
 type Client struct {
-	ecsClient               *ecs.ECS
-	vpcClient               *vpc.VPC
-	limiter                 *helpers.APILimiter
-	projectName             string
-	ecsTagFilters           []*ecs.TagFilterForDescribeInstancesInput
-	eniTagFilters           []*vpc.TagFilterForDescribeNetworkInterfacesInput
-	securityGroupTagFilters []*vpc.TagFilterForDescribeSecurityGroupsInput
+	ecsClient     *ecs.ECS
+	vpcClient     *vpc.VPC
+	limiter       *helpers.APILimiter
+	projectName   string
+	ecsTagFilters []*ecs.TagFilterForDescribeInstancesInput
+	eniTagFilters []*vpc.TagFilterForDescribeNetworkInterfacesInput
+	vpcID         string
 }
 
 type TagFilters[T any] interface {
@@ -81,26 +81,25 @@ type TagFilters[T any] interface {
 	SetValues([]*string) T
 }
 
-func NewClient(project string, config *volcengine.Config, metric VolcengineMetric, qpsLimit float64, burst int,
-	ecsTags map[string]string, eniTags map[string]string, subnetTags map[string]string, sgTags map[string]string) (*Client, error) {
+func NewClient(config *volcengine.Config, metric VolcengineMetric, qpsLimit float64, burst int,
+	project, vpcID string, ecsTags, eniTags, subnetTags map[string]string) (*Client, error) {
 	sess, err := session.NewSession(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
-	return newClient(vpc.New(sess), ecs.New(sess), project, metric, qpsLimit, burst, NewInstanceTagFilters(ecsTags), NewInterfaceTagFilters(eniTags), NewSecurityGroupTagFilters(sgTags)), nil
+	return newClient(vpc.New(sess), ecs.New(sess), metric, qpsLimit, burst, project, vpcID, NewInstanceTagFilters(ecsTags), NewInterfaceTagFilters(eniTags)), nil
 }
 
-func newClient(vpcClient *vpc.VPC, ecsClient *ecs.ECS, projectName string, metrics VolcengineMetric, rateLimit float64, burst int,
-	ecsTagFilters []*ecs.TagFilterForDescribeInstancesInput, eniTagFilters []*vpc.TagFilterForDescribeNetworkInterfacesInput,
-	sgTagFilters []*vpc.TagFilterForDescribeSecurityGroupsInput) *Client {
+func newClient(vpcClient *vpc.VPC, ecsClient *ecs.ECS, metrics VolcengineMetric, rateLimit float64, burst int,
+	projectName, vpcID string, ecsTagFilters []*ecs.TagFilterForDescribeInstancesInput, eniTagFilters []*vpc.TagFilterForDescribeNetworkInterfacesInput) *Client {
 	return &Client{
-		vpcClient:               vpcClient,
-		ecsClient:               ecsClient,
-		limiter:                 helpers.NewAPILimiter(metrics, rateLimit, burst),
-		projectName:             projectName,
-		ecsTagFilters:           ecsTagFilters,
-		eniTagFilters:           eniTagFilters,
-		securityGroupTagFilters: sgTagFilters,
+		vpcClient:     vpcClient,
+		ecsClient:     ecsClient,
+		limiter:       helpers.NewAPILimiter(metrics, rateLimit, burst),
+		projectName:   projectName,
+		vpcID:         vpcID,
+		ecsTagFilters: ecsTagFilters,
+		eniTagFilters: eniTagFilters,
 	}
 }
 
@@ -126,6 +125,9 @@ func NewSecurityGroupTagFilters(tags map[string]string) []*vpc.TagFilterForDescr
 }
 
 func newTagFilters[T TagFilters[T]](tags map[string]string, newFilter func() T) []T {
+	if len(tags) == 0 {
+		return nil
+	}
 	filters := make([]T, 0, len(tags))
 	for k, v := range tags {
 		filters = append(filters, newFilter().SetKey(k).SetValues([]*string{volcengine.String(v)}))
@@ -141,11 +143,11 @@ func (c *Client) CreateNetworkInterface(ctx context.Context, secondaryPrivateIPC
 	}
 	iface := &eniTypes.ENI{
 		NetworkInterfaceID: volcengine.StringValue(resp.NetworkInterfaceId),
-		ProjectName:        volcengine.StringValue(resp.ProjectName),
-		Type:               eniTypes.ENITypeSecondary,
-		MACAddress:         volcengine.StringValue(resp.MacAddress),
-		PrimaryIPAddress:   volcengine.StringValue(resp.PrimaryIpAddress),
-		PrivateIPSets:      getPrivateIPSetsFromInterfacesAttrOutput(resp.PrivateIpSets),
+		//ProjectName:        volcengine.StringValue(resp.ProjectName),
+		Type:             eniTypes.ENITypeSecondary,
+		MACAddress:       volcengine.StringValue(resp.MacAddress),
+		PrimaryIPAddress: volcengine.StringValue(resp.PrimaryIpAddress),
+		PrivateIPSets:    getPrivateIPSetsFromInterfacesAttrOutput(resp.PrivateIpSets),
 		VPC: eniTypes.VPC{
 			VPCID:               volcengine.StringValue(resp.VpcId),
 			CIDRBlock:           "",
@@ -248,11 +250,11 @@ func (c *Client) GetInstance(ctx context.Context, vpcs ipamTypes.VirtualNetworkM
 	for _, iface := range networkInterfaces {
 		eni := eniTypes.ENI{
 			NetworkInterfaceID: volcengine.StringValue(iface.NetworkInterfaceId),
-			ProjectName:        volcengine.StringValue(iface.ProjectName),
-			Type:               eniTypes.ENIType(volcengine.StringValue(iface.Type)),
-			MACAddress:         volcengine.StringValue(iface.MacAddress),
-			PrimaryIPAddress:   volcengine.StringValue(iface.PrimaryIpAddress),
-			PrivateIPSets:      getPrivateIPSetsFromInterfacesOutput(iface.PrivateIpSets),
+			//ProjectName:        volcengine.StringValue(iface.ProjectName),
+			Type:             eniTypes.ENIType(volcengine.StringValue(iface.Type)),
+			MACAddress:       volcengine.StringValue(iface.MacAddress),
+			PrimaryIPAddress: volcengine.StringValue(iface.PrimaryIpAddress),
+			PrivateIPSets:    getPrivateIPSetsFromInterfacesOutput(iface.PrivateIpSets),
 			VPC: eniTypes.VPC{
 				VPCID:               volcengine.StringValue(iface.VpcId),
 				CIDRBlock:           "",
@@ -299,11 +301,11 @@ func (c *Client) GetInstances(ctx context.Context, vpcs ipamTypes.VirtualNetwork
 	for _, iface := range networkInterfaces {
 		eni := eniTypes.ENI{
 			NetworkInterfaceID: volcengine.StringValue(iface.NetworkInterfaceId),
-			ProjectName:        volcengine.StringValue(iface.ProjectName),
-			Type:               eniTypes.ENIType(volcengine.StringValue(iface.Type)),
-			MACAddress:         volcengine.StringValue(iface.MacAddress),
-			PrimaryIPAddress:   volcengine.StringValue(iface.PrimaryIpAddress),
-			PrivateIPSets:      getPrivateIPSetsFromInterfacesOutput(iface.PrivateIpSets),
+			//ProjectName:        volcengine.StringValue(iface.ProjectName),
+			Type:             eniTypes.ENIType(volcengine.StringValue(iface.Type)),
+			MACAddress:       volcengine.StringValue(iface.MacAddress),
+			PrimaryIPAddress: volcengine.StringValue(iface.PrimaryIpAddress),
+			PrivateIPSets:    getPrivateIPSetsFromInterfacesOutput(iface.PrivateIpSets),
 			VPC: eniTypes.VPC{
 				VPCID:               volcengine.StringValue(iface.VpcId),
 				CIDRBlock:           "",
@@ -397,12 +399,14 @@ func (c *Client) GetSecurityGroups(ctx context.Context) (types.SecurityGroupMap,
 
 func (c *Client) describeSubnetByID(ctx context.Context, id string) (*vpc.DescribeSubnetAttributesOutput, error) {
 	c.limiter.Limit(ctx, "DescribeSubnetAttributes")
-	return c.vpcClient.DescribeSubnetAttributes(&vpc.DescribeSubnetAttributesInput{SubnetId: volcengine.String(id)})
+	return c.vpcClient.DescribeSubnetAttributes(
+		&vpc.DescribeSubnetAttributesInput{SubnetId: volcengine.String(id)})
 }
 
 func (c *Client) describeSubnets(ctx context.Context) ([]*vpc.SubnetForDescribeSubnetsOutput, error) {
 	result := make([]*vpc.SubnetForDescribeSubnetsOutput, 0)
 	input := &vpc.DescribeSubnetsInput{
+		//ProjectName: volcengine.String(c.projectName),
 		MaxResults: volcengine.Int64(100),
 	}
 	c.limiter.Limit(ctx, "DescribeSubnets")
@@ -432,10 +436,10 @@ func (c *Client) describeSubnets(ctx context.Context) ([]*vpc.SubnetForDescribeS
 func (c *Client) describeInterfaceByInstanceId(ctx context.Context, instanceID string) ([]*vpc.NetworkInterfaceSetForDescribeNetworkInterfacesOutput, error) {
 	result := make([]*vpc.NetworkInterfaceSetForDescribeNetworkInterfacesOutput, 0, 10)
 	input := &vpc.DescribeNetworkInterfacesInput{
-		InstanceId:  volcengine.String(instanceID),
-		MaxResults:  volcengine.Int64(100),
-		ProjectName: volcengine.String(c.projectName),
-		TagFilters:  c.eniTagFilters,
+		InstanceId: volcengine.String(instanceID),
+		MaxResults: volcengine.Int64(100),
+		//ProjectName: volcengine.String(c.projectName),
+		TagFilters: c.eniTagFilters,
 	}
 	c.limiter.Limit(ctx, "DescribeNetworkInterfaces")
 	resp, err := c.vpcClient.DescribeNetworkInterfaces(input)
@@ -466,9 +470,9 @@ func (c *Client) describeInterfacesOfInstances(ctx context.Context) ([]*vpc.Netw
 	results := make([]*vpc.NetworkInterfaceSetForDescribeNetworkInterfacesOutput, 0, 100)
 
 	input := &ecs.DescribeInstancesInput{
-		ProjectName: volcengine.String(c.projectName),
-		TagFilters:  c.ecsTagFilters,
-		MaxResults:  volcengine.Int32(100),
+		//ProjectName: volcengine.String(c.projectName),
+		TagFilters: c.ecsTagFilters,
+		MaxResults: volcengine.Int32(100),
 	}
 	c.limiter.Limit(ctx, "DescribeInstances")
 	resp, err := c.ecsClient.DescribeInstances(input)
@@ -505,9 +509,9 @@ func (c *Client) describeInterfacesOfInstances(ctx context.Context) ([]*vpc.Netw
 func (c *Client) describeInterfaces(ctx context.Context) ([]*vpc.NetworkInterfaceSetForDescribeNetworkInterfacesOutput, error) {
 	results := make([]*vpc.NetworkInterfaceSetForDescribeNetworkInterfacesOutput, 0, 100)
 	input := &vpc.DescribeNetworkInterfacesInput{
-		MaxResults:  volcengine.Int64(100),
-		ProjectName: volcengine.String(c.projectName),
-		TagFilters:  c.eniTagFilters,
+		MaxResults: volcengine.Int64(100),
+		//ProjectName: volcengine.String(c.projectName),
+		TagFilters: c.eniTagFilters,
 	}
 	c.limiter.Limit(ctx, "DescribeNetworkInterfaces")
 	resp, err := c.vpcClient.DescribeNetworkInterfaces(input)
@@ -536,8 +540,8 @@ func (c *Client) describeInterfaces(ctx context.Context) ([]*vpc.NetworkInterfac
 func (c *Client) describeVPCs(ctx context.Context) ([]*vpc.VpcForDescribeVpcsOutput, error) {
 	result := make([]*vpc.VpcForDescribeVpcsOutput, 0)
 	input := &vpc.DescribeVpcsInput{
-		MaxResults:  volcengine.Int64(100),
-		ProjectName: volcengine.String(c.projectName),
+		MaxResults: volcengine.Int64(100),
+		//ProjectName: volcengine.String(c.projectName),
 	}
 	c.limiter.Limit(ctx, "DescribeVpcs")
 	resp, err := c.vpcClient.DescribeVpcs(input)
@@ -567,8 +571,8 @@ func (c *Client) describeVPCs(ctx context.Context) ([]*vpc.VpcForDescribeVpcsOut
 func (c *Client) describeSecurityGroups(ctx context.Context) ([]*vpc.SecurityGroupForDescribeSecurityGroupsOutput, error) {
 	result := make([]*vpc.SecurityGroupForDescribeSecurityGroupsOutput, 0, 5)
 	input := &vpc.DescribeSecurityGroupsInput{
-		MaxResults:  volcengine.Int64(100),
-		ProjectName: volcengine.String(c.projectName),
+		MaxResults: volcengine.Int64(100),
+		//ProjectName: volcengine.String(c.projectName),
 	}
 	c.limiter.Limit(ctx, "DescribeSecurityGroups")
 	resp, err := c.vpcClient.DescribeSecurityGroups(input)
@@ -625,7 +629,7 @@ func (c *Client) describeInstanceTypes(ctx context.Context) ([]*ecs.InstanceType
 
 func (c *Client) createNetworkInterface(ctx context.Context, ipCount int, subnetId string, groups []string, tags map[string]string) (*vpc.DescribeNetworkInterfaceAttributesOutput, error) {
 	input := &vpc.CreateNetworkInterfaceInput{
-		ProjectName:                    volcengine.String(c.projectName),
+		//ProjectName:                    volcengine.String(c.projectName),
 		SecondaryPrivateIpAddressCount: volcengine.Int64(min(int64(1), int64(ipCount))),
 		SecurityGroupIds:               volcengine.StringSlice(groups),
 		SubnetId:                       volcengine.String(subnetId),
