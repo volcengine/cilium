@@ -87,8 +87,14 @@ func (a *AllocatorVolcengine) Init(ctx context.Context) (err error) {
 		WithLogger(volcengine.NewDefaultLogger()) //TODO: unify logger
 	config.WithCredentials(cred)
 
+	eniCreationTags := cfg.VolcengineENITags
+	if cfg.VolcengineENIGCInterval > 0 {
+		a.eniGCTags = cfg.VolcengineENIGCTags
+		eniCreationTags = api.MergeTags(eniCreationTags, a.eniGCTags)
+	}
+
 	a.client, err = api.NewClient("default", config, metric, cfg.IPAMAPIQPSLimit, cfg.IPAMAPIBurst,
-		map[string]string{}, map[string]string{}, map[string]string{}, map[string]string{})
+		cfg.IPAMInstanceTags, eniCreationTags, map[string]string{}, map[string]string{})
 	if err != nil {
 		log.Debugf("create client by %s.%s of Volcengine fialed: %v", regionID, vpcID, err)
 		return err

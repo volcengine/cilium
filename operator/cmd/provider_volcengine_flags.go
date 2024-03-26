@@ -23,6 +23,10 @@ type volcengineFlagsHooks struct{}
 func (h *volcengineFlagsHooks) RegisterProviderFlag(cmd *cobra.Command, vp *viper.Viper) {
 	flags := cmd.Flags()
 
+	flags.Var(option.NewNamedMapOptions(operatorOption.VolcengineENITags, &operatorOption.Config.VolcengineENITags, nil),
+		operatorOption.ENITags, "ENI tags in the form of k1=v1 (multiple k/v pairs can be passed by repeating the CLI flag)")
+	option.BindEnv(vp, operatorOption.ENITags)
+
 	flags.Var(option.NewNamedMapOptions(operatorOption.VolcengineENIGCTags, &operatorOption.Config.VolcengineENIGCTags, nil),
 		operatorOption.VolcengineENIGCTags, "Additional tags attached to Volcengine ENIs created by Cilium. Dangling ENIs with this tag will be garbage collected")
 	option.BindEnv(vp, operatorOption.VolcengineENIGCTags)
