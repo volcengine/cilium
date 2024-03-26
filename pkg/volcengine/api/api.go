@@ -438,7 +438,7 @@ func (c *Client) describeSubnets(ctx context.Context) ([]*vpc.SubnetForDescribeS
 		return nil, err
 	}
 	result = append(result, resp.Subnets...)
-
+	input.NextToken = resp.NextToken
 	for input.NextToken != nil {
 		select {
 		case <-ctx.Done():
@@ -511,20 +511,25 @@ func (c *Client) describeInterfacesOfInstances(ctx context.Context) ([]*vpc.Netw
 	}
 	input.NextToken = resp.NextToken
 	for input.NextToken != nil {
-		c.limiter.Limit(ctx, "DescribeInstances")
-		resp, err = c.ecsClient.DescribeInstances(input)
-		if err != nil {
-			return nil, err
-		}
-		for _, instance := range resp.Instances {
-			enis, err := c.describeInterfaceByInstanceId(ctx, volcengine.StringValue(instance.InstanceId))
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+			c.limiter.Limit(ctx, "DescribeInstances")
+			resp, err = c.ecsClient.DescribeInstances(input)
 			if err != nil {
 				return nil, err
 			}
-			results = append(results, enis...)
+			for _, instance := range resp.Instances {
+				enis, err := c.describeInterfaceByInstanceId(ctx, volcengine.StringValue(instance.InstanceId))
+				if err != nil {
+					return nil, err
+				}
+				results = append(results, enis...)
 
+			}
+			input.NextToken = resp.NextToken
 		}
-		input.NextToken = resp.NextToken
 	}
 	return results, nil
 }
