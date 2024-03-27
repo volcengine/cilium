@@ -22,3 +22,7 @@ const (
 const (
 	TagKeyVPCID = "VPCID"
 )
+
+const (
+	ModuleNameNodeOps = "NodeOps"
+)

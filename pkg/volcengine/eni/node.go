@@ -104,6 +104,7 @@ func (n *Node) UpdatedNode(obj *v2.CiliumNode) {
 // PopulateStatusFields fills in the status field of the CiliumNode custom
 // resource with Volcengine ENI specific information
 func (n *Node) PopulateStatusFields(resource *v2.CiliumNode) {
+	defer logs(context.TODO(), constant.ModuleNameNodeOps, "PopulateStatusFields")()
 	resource.Status.Volcengine.ENIS = make(map[string]eniTypes.ENI)
 
 	n.manager.ForeachInstance(n.node.InstanceID(),
@@ -131,6 +132,7 @@ func (n *Node) backOffInOrder(fs ...func() error) error {
 // of secondary IPs are assigned to the interface up to the maximum number of
 // addresses as allowed by the instance.
 func (n *Node) CreateInterface(ctx context.Context, allocation *ipam.AllocationAction, scopedLog *logrus.Entry) (int, string, error) {
+	defer logs(context.TODO(), constant.ModuleNameNodeOps, "CreateInterface")()
 	limit, available := n.getLimits()
 	if !available {
 		return 0, unableToDetermineLimits, fmt.Errorf(errUnableToDetermineLimits)
@@ -225,6 +227,7 @@ func (n *Node) CreateInterface(ctx context.Context, allocation *ipam.AllocationA
 // ResyncInterfacesAndIPs is called to retrieve and ENIs and IPs as known to
 // the volcengine API and return them
 func (n *Node) ResyncInterfacesAndIPs(ctx context.Context, scopedLog *logrus.Entry) (allocations ipamTypes.AllocationMap, stats stats.InterfaceStats, err error) {
+	defer logs(context.TODO(), constant.ModuleNameNodeOps, "ResyncInterfacesAndIPs")()
 	limit, available := n.getLimits()
 	if !available {
 		return allocations, stats, fmt.Errorf(errUnableToDetermineLimits)
@@ -287,6 +290,7 @@ func (n *Node) ResyncInterfacesAndIPs(ctx context.Context, scopedLog *logrus.Ent
 // PrepareIPAllocation returns the number of ENI IPs and interfaces that can be
 // allocated/created.
 func (n *Node) PrepareIPAllocation(scopedLog *logrus.Entry) (*ipam.AllocationAction, error) {
+	defer logs(context.TODO(), constant.ModuleNameNodeOps, "PrepareIPAllocation")()
 	limit, available := n.getLimits()
 	if !available {
 		return nil, fmt.Errorf(errUnableToDetermineLimits)
@@ -349,12 +353,14 @@ func (n *Node) PrepareIPAllocation(scopedLog *logrus.Entry) (*ipam.AllocationAct
 
 // AllocateIPs performs the ENI allocation operation
 func (n *Node) AllocateIPs(ctx context.Context, a *ipam.AllocationAction) error {
+	defer logs(context.TODO(), constant.ModuleNameNodeOps, "AllocateIPs")()
 	_, err := n.manager.api.AssignPrivateIPAddresses(ctx, a.InterfaceID, a.AvailableForAllocation)
 	return err
 }
 
 // PrepareIPRelease prepares the release of ENI IPs.
 func (n *Node) PrepareIPRelease(excessIPs int, scopedLog *logrus.Entry) *ipam.ReleaseAction {
+	defer logs(context.TODO(), constant.ModuleNameNodeOps, "PrepareIPRelease")()
 	r := &ipam.ReleaseAction{}
 
 	defer n.lockAllFuncCalls()()
@@ -406,12 +412,14 @@ func (n *Node) PrepareIPRelease(excessIPs int, scopedLog *logrus.Entry) *ipam.Re
 
 // ReleaseIPs performs the ENI IP release operation
 func (n *Node) ReleaseIPs(ctx context.Context, r *ipam.ReleaseAction) error {
+	defer logs(context.TODO(), constant.ModuleNameNodeOps, "ReleaseIPs")()
 	return n.manager.api.UnassignPrivateIPAddresses(ctx, r.InterfaceID, r.IPsToRelease)
 }
 
 // GetMaximumAllocatableIPv4 returns the maximum number of IPv4 addresses
 // that can be allocated to the instance
 func (n *Node) GetMaximumAllocatableIPv4() int {
+	defer logs(context.TODO(), constant.ModuleNameNodeOps, "GetMaximumAllocatableIPv4")()
 	defer n.rLockAllFuncCalls()()
 
 	// Retrieve limit for the instance type
@@ -433,6 +441,7 @@ func (n *Node) GetMaximumAllocatableIPv4() int {
 // GetMinimumAllocatableIPv4 returns the minimum number of IPv4 addresses that
 // must be allocated to the instance.
 func (n *Node) GetMinimumAllocatableIPv4() int {
+	defer logs(context.TODO(), constant.ModuleNameNodeOps, "GetMinimumAllocatableIPv4")()
 	var reservedNumber int
 	if !n.k8sObj.Spec.Volcengine.EnableUsePrimaryAddress() {
 		reservedNumber++
@@ -453,6 +462,7 @@ func (n *Node) IsPrefixDelegated() bool {
 }
 
 func (n *Node) GetUsedIPWithPrefixes() int {
+	defer logs(context.TODO(), constant.ModuleNameNodeOps, "GetUsedIPWithPrefixes")()
 	if n.k8sObj == nil {
 		return 0
 	}
