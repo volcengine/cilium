@@ -34,7 +34,7 @@ type AllocatorVolcengine struct {
 	eniGCTags map[string]string
 }
 
-func (a *AllocatorVolcengine) buildENIGarbageCollectionTags(ctx context.Context, cfg *operatorOption.OperatorConfig) {
+func (a *AllocatorVolcengine) buildENIGarbageCollectionTags(cfg *operatorOption.OperatorConfig) {
 	// Use user-provided tags if available
 	if len(cfg.VolcengineENIGCTags) != 0 {
 		a.eniGCTags = cfg.VolcengineENIGCTags
@@ -91,7 +91,7 @@ func (a *AllocatorVolcengine) Init(ctx context.Context) (err error) {
 
 	eniCreationTags := cfg.VolcengineENITags
 	if cfg.VolcengineENIGCInterval > 0 {
-		a.eniGCTags = cfg.VolcengineENIGCTags
+		a.buildENIGarbageCollectionTags(cfg)
 		eniCreationTags = api.MergeTags(eniCreationTags, a.eniGCTags)
 	}
 
