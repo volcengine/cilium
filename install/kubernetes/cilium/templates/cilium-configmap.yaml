@@ -539,7 +539,7 @@ data:
 {{- if .Values.volcengine.eniTags }}
   volcengine-eni-tags: {{ .Values.volcengine.eniTags | toRawJson | quote }}
 {{- end }}
-{{- if .Values.volcengine.gcTags }}
+{{- if .Values.volcengine.eniGCTags }}
   volcengine-eni-gc-tags: {{ .Values.volcengine.eniGCTags | toRawJson | quote }}
 {{- end }}
 {{- if .Values.volcengine.gcInterval }}
