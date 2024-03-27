@@ -248,6 +248,7 @@ func (n *Node) ResyncInterfacesAndIPs(ctx context.Context, scopedLog *logrus.Ent
 
 	defer n.lockAllFuncCalls()()
 	n.enis = make(map[string]eniTypes.ENI)
+	allocations = make(ipamTypes.AllocationMap)
 
 	n.manager.ForeachInstance(instanceID,
 		func(_, _ string, rev ipamTypes.InterfaceRevision) error {
