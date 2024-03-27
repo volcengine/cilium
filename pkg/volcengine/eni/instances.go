@@ -42,8 +42,7 @@ func NewInstancesManager(api api.VolcengineAPI) *InstancesManager {
 // CreateNode is called on discovery of a new node and retusn the ENI node
 // allocation implementation for the new node.
 func (m *InstancesManager) CreateNode(obj *v2.CiliumNode, node *ipam.Node) ipam.NodeOperations {
-	// TODO: Create volcengine node
-	return nil
+	return NewNode(node, obj, m)
 }
 
 // DeleteInstance deletes instance by given instanceID.
