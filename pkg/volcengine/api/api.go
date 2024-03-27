@@ -6,6 +6,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/volcengine/volcengine-go-sdk/service/ecs"
 	"github.com/volcengine/volcengine-go-sdk/service/vpc"
@@ -68,13 +69,13 @@ type (
 
 // Client implemented VolcengineClient for open api call
 type Client struct {
-	ecsClient     *ecs.ECS
-	vpcClient     *vpc.VPC
-	limiter       *helpers.APILimiter
-	projectName   string
-	ecsTagFilters []*ecs.TagFilterForDescribeInstancesInput
-	eniTagFilters []*vpc.TagFilterForDescribeNetworkInterfacesInput
-	vpcID         string
+	ecsClient       *ecs.ECS
+	vpcClient       *vpc.VPC
+	limiter         *helpers.APILimiter
+	projectName     string
+	ecsTagFilters   []*ecs.TagFilterForDescribeInstancesInput
+	eniCreationTags map[string]string
+	vpcID           string //currently not used
 }
 
 type TagFilters[T any] interface {
@@ -88,19 +89,19 @@ func NewClient(config *volcengine.Config, metric VolcengineMetric, qpsLimit floa
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
-	return newClient(vpc.New(sess), ecs.New(sess), metric, qpsLimit, burst, project, vpcID, NewInstanceTagFilters(ecsTags), NewInterfaceTagFilters(eniTags)), nil
+	return newClient(vpc.New(sess), ecs.New(sess), metric, qpsLimit, burst, project, vpcID, eniTags, NewInstanceTagFilters(ecsTags)), nil
 }
 
 func newClient(vpcClient *vpc.VPC, ecsClient *ecs.ECS, metrics VolcengineMetric, rateLimit float64, burst int,
-	projectName, vpcID string, ecsTagFilters []*ecs.TagFilterForDescribeInstancesInput, eniTagFilters []*vpc.TagFilterForDescribeNetworkInterfacesInput) *Client {
+	projectName, vpcID string, eniTags map[string]string, ecsTagFilters []*ecs.TagFilterForDescribeInstancesInput) *Client {
 	return &Client{
-		vpcClient:     vpcClient,
-		ecsClient:     ecsClient,
-		limiter:       helpers.NewAPILimiter(metrics, rateLimit, burst),
-		projectName:   projectName,
-		vpcID:         vpcID,
-		ecsTagFilters: ecsTagFilters,
-		eniTagFilters: eniTagFilters,
+		vpcClient:       vpcClient,
+		ecsClient:       ecsClient,
+		limiter:         helpers.NewAPILimiter(metrics, rateLimit, burst),
+		projectName:     projectName,
+		vpcID:           vpcID,
+		eniCreationTags: eniTags,
+		ecsTagFilters:   ecsTagFilters,
 	}
 }
 
@@ -137,8 +138,8 @@ func newTagFilters[T TagFilters[T]](tags map[string]string, newFilter func() T) 
 }
 
 // CreateNetworkInterface creates a network interface(ENI).
-func (c *Client) CreateNetworkInterface(ctx context.Context, secondaryPrivateIPCount int, subnetID string, groups []string, tags map[string]string) (string, *eniTypes.ENI, error) {
-	resp, err := c.createNetworkInterface(ctx, secondaryPrivateIPCount, subnetID, groups, tags)
+func (c *Client) CreateNetworkInterface(ctx context.Context, secondaryPrivateIPCount int, subnetID string, groups []string, extraTags map[string]string) (string, *eniTypes.ENI, error) {
+	resp, err := c.createNetworkInterface(ctx, secondaryPrivateIPCount, subnetID, groups, MergeTags(c.eniCreationTags, extraTags))
 	if err != nil {
 		return "", nil, err
 	}
@@ -315,7 +316,7 @@ func (c *Client) GetInstances(ctx context.Context, vpcs ipamTypes.VirtualNetwork
 	if len(c.ecsTagFilters) > 0 {
 		networkInterfaces, err = c.describeInterfacesOfInstances(ctx)
 	} else {
-		networkInterfaces, err = c.describeInterfaces(ctx, c.eniTagFilters)
+		networkInterfaces, err = c.describeInterfaces(ctx, nil)
 	}
 	if err != nil {
 		return nil, err
@@ -324,11 +325,11 @@ func (c *Client) GetInstances(ctx context.Context, vpcs ipamTypes.VirtualNetwork
 	for _, iface := range networkInterfaces {
 		eni := eniTypes.ENI{
 			NetworkInterfaceID: volcengine.StringValue(iface.NetworkInterfaceId),
-			//ProjectName:        volcengine.StringValue(iface.ProjectName),
-			Type:             eniTypes.ENIType(volcengine.StringValue(iface.Type)),
-			MACAddress:       volcengine.StringValue(iface.MacAddress),
-			PrimaryIPAddress: volcengine.StringValue(iface.PrimaryIpAddress),
-			PrivateIPSets:    getPrivateIPSetsFromInterfacesOutput(iface.PrivateIpSets),
+			ProjectName:        volcengine.StringValue(iface.ProjectName),
+			Type:               eniTypes.ENIType(volcengine.StringValue(iface.Type)),
+			MACAddress:         volcengine.StringValue(iface.MacAddress),
+			PrimaryIPAddress:   volcengine.StringValue(iface.PrimaryIpAddress),
+			PrivateIPSets:      getPrivateIPSetsFromInterfacesOutput(iface.PrivateIpSets),
 			VPC: eniTypes.VPC{
 				VPCID:               volcengine.StringValue(iface.VpcId),
 				CIDRBlock:           "",
@@ -462,7 +463,6 @@ func (c *Client) describeInterfaceByInstanceId(ctx context.Context, instanceID s
 		InstanceId: volcengine.String(instanceID),
 		MaxResults: volcengine.Int64(100),
 		//ProjectName: volcengine.String(c.projectName),
-		TagFilters: c.eniTagFilters,
 	}
 	c.limiter.Limit(ctx, "DescribeNetworkInterfaces")
 	resp, err := c.vpcClient.DescribeNetworkInterfaces(input)
@@ -876,9 +876,7 @@ func parseENI(iface *eniTypes.ENI, vpcs ipamTypes.VirtualNetworkMap, subnets ipa
 func MergeTags(tagMaps ...map[string]string) map[string]string {
 	tags := make(map[string]string)
 	for _, m := range tagMaps {
-		for k, v := range m {
-			tags[k] = v
-		}
+		maps.Copy(tags, m)
 	}
 	return tags
 }
