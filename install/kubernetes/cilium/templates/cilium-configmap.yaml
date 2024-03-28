@@ -533,6 +533,9 @@ data:
 {{- if .Values.volcengine.enabled }}
   enable-endpoint-routes: "true"
   auto-create-cilium-node-resource: "true"
+{{- if .Values.volcengine.releaseExcessIPs }}
+  volcengine-release-excess-ips: "true"
+{{- end }}
 {{- if .Values.volcengine.instanceTagsFilter }}
   instance-tags-filter: {{ .Values.volcengine.instanceTagsFilter | join " " | quote }}
 {{- end }}

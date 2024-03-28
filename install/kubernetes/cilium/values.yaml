@@ -374,6 +374,8 @@ volcengine:
   # -- Filter via Volcengine ECS Instance tags (k=v) which will dictate which Volcengine ECS Instances
   # are going to be used to create new ENIs
   instanceTagsFilter: []
+  # -- Release IPs not used from the ENI
+  releaseExcessIPs: false
 
 # -- Enable bandwidth manager to optimize TCP and UDP workloads and allow
 # for rate-limiting traffic from individual Pods with EDT (Earliest Departure
