@@ -51,7 +51,7 @@ func StartENIGarbageCollector(ctx context.Context, api api.VolcengineAPI, params
 				log.WithField("eniID", eniID).Debug("Garbage collecting ENI")
 				err := api.DeleteNetworkInterface(ctx, eniID)
 				if err != nil {
-					log.WithError(err).Debug("Failed to garbage collect ENI")
+					log.WithError(err).WithField("id", eniID).Error("Failed to garbage collect ENI")
 				}
 			}
 
