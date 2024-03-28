@@ -348,8 +348,9 @@ func (c *Client) GetInstances(ctx context.Context, vpcs ipamTypes.VirtualNetwork
 		}
 		item, err := parseENI(&eni, vpcs, subnets)
 		if err != nil {
-			instances.Update(item.DeviceID, ipamTypes.InterfaceRevision{Resource: item})
+			return nil, err
 		}
+		instances.Update(item.DeviceID, ipamTypes.InterfaceRevision{Resource: item})
 	}
 
 	return instances, nil
