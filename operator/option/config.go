@@ -353,7 +353,7 @@ type OperatorConfig struct {
 	// IPAMSubnetsTags are optional tags used to filter subnets, and interfaces within those subnets
 	IPAMSubnetsTags map[string]string
 
-	// IPAMUInstanceTags are optional tags used to filter AWS EC2 instances, and interfaces (ENI) attached to them
+	// IPAMUInstanceTags are optional tags used to filter AWS and Volcengine EC2 instances, and interfaces (ENI) attached to them
 	IPAMInstanceTags map[string]string
 
 	// IPAM Operator options
