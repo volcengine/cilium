@@ -35,7 +35,7 @@ const (
 
 	// allocation type
 	createInterfaceAndAllocateIP = "createInterfaceAndAllocateIP"
-	releaseInterfaceAndRecycleIP = "releaseInterfaceAndRecycleIP"
+	deleteInterfaceAndReleaseIP  = "deleteInterfaceAndReleaseIP"
 	allocateIP                   = "allocateIP"
 	releaseIP                    = "releaseIP"
 
@@ -558,7 +558,7 @@ func (n *Node) releaseInterface(ctx context.Context, r *ReleaseAction) (released
 	if len(errCondition) > 0 {
 		status = errCondition
 	}
-	n.manager.metricsAPI.ReleaseAttempt(releaseInterfaceAndRecycleIP, status, string(r.PoolID), metrics.SinceInSeconds(start))
+	n.manager.metricsAPI.ReleaseAttempt(deleteInterfaceAndReleaseIP, status, string(r.PoolID), metrics.SinceInSeconds(start))
 	if err != nil {
 		scopedLog.Warningf("Unable to release interface on instance: %s", err)
 		return false, err
