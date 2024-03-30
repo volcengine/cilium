@@ -31,6 +31,8 @@ const (
 	unableToGetSecurityGroups    = "unableToGetSecurityGroups"
 	errUnableToCreateENI         = "unable to create ENI"
 	unableToCreateENI            = "unableToCreateENI"
+	errUnableToDeleteENI         = "unable to delete ENI"
+	unableToDeleteENI            = "unableToDeleteENI"
 	errUnableToAttachENI         = "unable to attach ENI"
 	unableToAttachENI            = "unableToAttachENI"
 	unableToFindSubnet           = "unableToFindSubnet"
@@ -222,6 +224,37 @@ func (n *Node) CreateInterface(ctx context.Context, allocation *ipam.AllocationA
 	// Add the information of the created ENI to the instances manager
 	n.manager.UpdateENI(instanceID, eni)
 	return toAllocate, "", nil
+}
+
+// ReleaseInterface will detect the interface for ips release, and delete which
+// is not used by any existing instance specified by the CiliumNode.
+func (n *Node) ReleaseInterface(ctx context.Context, release *ipam.ReleaseAction, scopedLog *logrus.Entry) (string, error) {
+	defer logs(context.TODO(), constant.ModuleNameNodeOps, "CreateInterface")()
+
+	var rsc v2.CiliumNode
+	n.rLockAllFuncCalls(func() { rsc = *n.k8sObj })()
+
+	if rsc.Status.IPAM.IsResourceUsing(release.InterfaceID) {
+		return "", nil
+	}
+
+	scopedLog = scopedLog.WithField(constant.LogFieldENID, release.InterfaceID)
+	scopedLog.Info("No any IP in using, deleting the ENI")
+
+	instanceID := n.node.InstanceID()
+
+	defer n.lockAllFuncCalls()()
+	err := n.manager.api.DeleteNetworkInterface(ctx, release.InterfaceID)
+	if err != nil {
+		return unableToDeleteENI, fmt.Errorf("%s %s", errUnableToDeleteENI, err)
+	}
+	delete(n.enis, release.InterfaceID)
+
+	scopedLog.Info("Deleted the ENI")
+
+	// Add the information of the created ENI to the instances manager
+	n.manager.DeleteENI(instanceID, release.InterfaceID)
+	return "", nil
 }
 
 // ResyncInterfacesAndIPs is called to retrieve and ENIs and IPs as known to

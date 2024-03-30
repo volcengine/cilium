@@ -89,6 +89,10 @@ func (n *Node) PopulateStatusFields(resource *v2.CiliumNode) {
 		})
 }
 
+func (n *Node) ReleaseInterface(ctx context.Context, release *ipam.ReleaseAction, scopedLog *logrus.Entry) (string, error) {
+	return "", nil
+}
+
 // CreateInterface creates an additional interface with the instance and
 // attaches it to the instance as specified by the CiliumNode. neededAddresses
 // of secondary IPs are assigned to the interface up to the maximum number of

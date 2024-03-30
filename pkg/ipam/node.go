@@ -35,6 +35,7 @@ const (
 
 	// allocation type
 	createInterfaceAndAllocateIP = "createInterfaceAndAllocateIP"
+	releaseInterfaceAndRecycleIP = "releaseInterfaceAndRecycleIP"
 	allocateIP                   = "allocateIP"
 	releaseIP                    = "releaseIP"
 
@@ -546,6 +547,29 @@ func (n *Node) createInterface(ctx context.Context, a *AllocationAction) (create
 	return true, nil
 }
 
+// releaseInterface will detect the interface for ips release, and delete which
+// is not used by any existing instance specified by the CiliumNode.
+func (n *Node) releaseInterface(ctx context.Context, r *ReleaseAction) (released bool, err error) {
+	scopedLog := n.logger()
+	start := time.Now()
+
+	errCondition, err := n.ops.ReleaseInterface(ctx, r, scopedLog)
+	status := success
+	if len(errCondition) > 0 {
+		status = errCondition
+	}
+	n.manager.metricsAPI.ReleaseAttempt(releaseInterfaceAndRecycleIP, status, string(r.PoolID), metrics.SinceInSeconds(start))
+	if err != nil {
+		scopedLog.Warningf("Unable to release interface on instance: %s", err)
+		return false, err
+	}
+
+	n.manager.metricsAPI.AddIPRelease(string(r.PoolID), int64(len(r.IPsToRelease)))
+	n.manager.metricsAPI.IncInterfaceRelease(string(r.PoolID))
+
+	return true, nil
+}
+
 // AllocationAction is the action to be taken to resolve allocation deficits
 // for a particular node. It is returned by
 // NodeOperations.PrepareIPAllocation() and passed into
@@ -852,6 +876,12 @@ func (n *Node) handleIPRelease(ctx context.Context, a *maintenanceAction) (insta
 				n.ipReleaseStatus[ip] = ipamOption.IPAMReleased
 			}
 			n.mutex.Unlock()
+
+			if _, err := n.releaseInterface(ctx, a.release); err != nil {
+				scopedLog.WithFields(logrus.Fields{
+					"selectedInterface": a.release.InterfaceID,
+				}).WithError(err).Warning("Unable to release the IP-unused interface")
+			}
 			return true, nil
 		}
 		n.manager.metricsAPI.ReleaseAttempt(releaseIP, failed, string(a.release.PoolID), metrics.SinceInSeconds(start))

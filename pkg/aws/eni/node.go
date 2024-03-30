@@ -533,6 +533,10 @@ func (n *Node) CreateInterface(ctx context.Context, allocation *ipam.AllocationA
 	return toAllocate, "", nil
 }
 
+func (n *Node) ReleaseInterface(ctx context.Context, release *ipam.ReleaseAction, scopedLog *logrus.Entry) (string, error) {
+	return "", nil
+}
+
 // ResyncInterfacesAndIPs is called to retrieve and ENIs and IPs as known to
 // the EC2 API and return them
 func (n *Node) ResyncInterfacesAndIPs(ctx context.Context, scopedLog *logrus.Entry) (

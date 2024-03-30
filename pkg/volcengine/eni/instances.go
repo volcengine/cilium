@@ -166,6 +166,15 @@ func (m *InstancesManager) UpdateENI(instanceID string, eni *eniTypes.ENI) {
 	m.instances.Update(instanceID, eniRevision)
 }
 
+// DeleteENI deletes the ENI definition for the given instance. If the ENI
+// is not present, it will do nothing.
+func (m *InstancesManager) DeleteENI(instanceID string, eniID string) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	m.instances.DeleteInterface(instanceID, eniID)
+}
+
 // ForeachInstance will iterate over each instance inside `instances`, and call
 // `fn`. This function is read-locked for the entire execution.
 func (m *InstancesManager) ForeachInstance(instanceID string, fn ipamTypes.InterfaceIterator) {

@@ -17,6 +17,7 @@ type mockMetrics struct {
 	ipAllocations         map[string]int64
 	ipReleases            map[string]int64
 	interfaceAllocations  map[string]int64
+	interfaceReleases     map[string]int64
 	allocatedIPs          map[string]int
 	availableInterfaces   int
 	interfaceCandidates   int
@@ -80,6 +81,12 @@ func (m *mockMetrics) ReleaseAttempt(typ, status, subnetID string, observer floa
 func (m *mockMetrics) IncInterfaceAllocation(subnetID string) {
 	m.mutex.Lock()
 	m.interfaceAllocations[fmt.Sprintf("subnetId=%s", subnetID)]++
+	m.mutex.Unlock()
+}
+
+func (m *mockMetrics) IncInterfaceRelease(subnetID string) {
+	m.mutex.Lock()
+	m.interfaceReleases[fmt.Sprintf("subnetId=%s", subnetID)]++
 	m.mutex.Unlock()
 }
 
