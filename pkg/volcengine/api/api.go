@@ -659,7 +659,7 @@ func (c *Client) describeInstanceTypes(ctx context.Context) ([]*ecs.InstanceType
 func (c *Client) createNetworkInterface(ctx context.Context, ipCount int, subnetId string, groups []string, tags map[string]string) (*vpc.DescribeNetworkInterfaceAttributesOutput, error) {
 	input := &vpc.CreateNetworkInterfaceInput{
 		//ProjectName:                    volcengine.String(c.projectName),
-		SecondaryPrivateIpAddressCount: volcengine.Int64(min(int64(1), int64(ipCount))),
+		SecondaryPrivateIpAddressCount: volcengine.Int64(max(int64(0), int64(ipCount))),
 		SecurityGroupIds:               volcengine.StringSlice(groups),
 		SubnetId:                       volcengine.String(subnetId),
 		Tags:                           buildENITagsForCreateNetworkInterface(tags),
