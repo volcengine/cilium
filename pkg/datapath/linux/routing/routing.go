@@ -77,7 +77,7 @@ func (info *RoutingInfo) Configure(ip net.IP, mtu int, compat bool) error {
 	}
 
 	// The condition here should mirror the condition in Delete.
-	if info.Masquerade && info.IpamMode == ipamOption.IPAMENI {
+	if info.Masquerade && (info.IpamMode == ipamOption.IPAMENI || info.IpamMode == ipamOption.IPAMVolcengine) {
 		// Lookup a VPC specific table for all traffic from an endpoint to the
 		// CIDR configured for the VPC on which the endpoint has the IP on.
 		for _, cidr := range info.IPv4CIDRs {
@@ -184,7 +184,7 @@ func Delete(ip netip.Addr, compat bool) error {
 	// Egress rules
 	// The condition here should mirror the conditions in Configure.
 	info := node.GetRouterInfo()
-	if info != nil && option.Config.EnableIPv4Masquerade && option.Config.IPAM == ipamOption.IPAMENI {
+	if info != nil && option.Config.EnableIPv4Masquerade && (option.Config.IPAM == ipamOption.IPAMENI || option.Config.IPAM == ipamOption.IPAMVolcengine) {
 		ipv4CIDRs := info.GetIPv4CIDRs()
 		cidrs := make([]*net.IPNet, 0, len(ipv4CIDRs))
 		for i := range ipv4CIDRs {
