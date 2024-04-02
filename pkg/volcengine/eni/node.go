@@ -105,13 +105,13 @@ func (n *Node) UpdatedNode(obj *v2.CiliumNode) {
 // resource with Volcengine ENI specific information
 func (n *Node) PopulateStatusFields(resource *v2.CiliumNode) {
 	defer logs(context.TODO(), constant.ModuleNameNodeOps, "PopulateStatusFields")()
-	resource.Status.Volcengine.ENIS = make(map[string]eniTypes.ENI)
+	resource.Status.Volcengine.ENIs = make(map[string]eniTypes.ENI)
 
 	n.manager.ForeachInstance(n.node.InstanceID(),
 		func(_, interfaceID string, rev ipamTypes.InterfaceRevision) error {
 			e, ok := rev.Resource.(*eniTypes.ENI)
 			if ok {
-				resource.Status.Volcengine.ENIS[interfaceID] = *e.DeepCopy()
+				resource.Status.Volcengine.ENIs[interfaceID] = *e.DeepCopy()
 			}
 			return nil
 		})
@@ -378,7 +378,7 @@ func (n *Node) PrepareIPRelease(excessIPs int, scopedLog *logrus.Entry) *ipam.Re
 		}).Debug("Considering ENI for IP release")
 
 		// Count free IP addresses on this ENI
-		ipsOnENI := n.k8sObj.Status.Volcengine.ENIS[e.NetworkInterfaceID].PrivateIPSets
+		ipsOnENI := n.k8sObj.Status.Volcengine.ENIs[e.NetworkInterfaceID].PrivateIPSets
 		freeIpsOnENI := make([]string, 0, len(ipsOnENI))
 		for _, ip := range ipsOnENI {
 			// exclude primary IPs
