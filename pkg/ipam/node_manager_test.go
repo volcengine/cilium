@@ -90,6 +90,10 @@ func (n *nodeOperationsMock) CreateInterface(ctx context.Context, allocation *Al
 	return 0, "operation not supported", fmt.Errorf("operation not supported")
 }
 
+func (n *nodeOperationsMock) ReleaseInterface(ctx context.Context, release *ReleaseAction, scopedLog *logrus.Entry) (string, error) {
+	return "operation not supported", fmt.Errorf("operation not supported")
+}
+
 func (n *nodeOperationsMock) ResyncInterfacesAndIPs(ctx context.Context, scopedLog *logrus.Entry) (
 	ipamTypes.AllocationMap,
 	ipamStats.InterfaceStats,

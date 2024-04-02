@@ -209,6 +209,16 @@ type IPAMStatus struct {
 	ReleaseIPs map[string]IPReleaseStatus `json:"release-ips,omitempty"`
 }
 
+// IsResourceUsing judge the given interface id whether are using on this node
+func (s *IPAMStatus) IsResourceUsing(eniID string) bool {
+	for _, allocation := range s.Used {
+		if allocation.Owner == eniID {
+			return true
+		}
+	}
+	return false
+}
+
 // IPAMPoolRequest is a request from the agent to the operator, indicating how
 // may IPs it requires from a given pool
 type IPAMPoolDemand struct {
@@ -535,6 +545,16 @@ func (m *InstanceMap) GetInterface(instanceID, interfaceID string) (InterfaceRev
 	}
 
 	return InterfaceRevision{}, false
+}
+
+// DeleteInterface will delete the interface on the instance.
+func (m *InstanceMap) DeleteInterface(instanceID string, interfaceID string) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if instance := m.data[instanceID]; instance != nil {
+		delete(instance.Interfaces, interfaceID)
+	}
 }
 
 // DeepCopy returns a deep copy

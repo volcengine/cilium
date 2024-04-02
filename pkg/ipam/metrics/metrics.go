@@ -18,6 +18,7 @@ type prometheusMetrics struct {
 	Allocation           *prometheus.HistogramVec
 	Release              *prometheus.HistogramVec
 	AllocateInterfaceOps *prometheus.CounterVec
+	ReleaseInterfaceOps  *prometheus.CounterVec
 	AllocateIpOps        *prometheus.CounterVec
 	ReleaseIpOps         *prometheus.CounterVec
 	AvailableIPs         *prometheus.GaugeVec
@@ -95,6 +96,13 @@ func NewPrometheusMetrics(namespace string, registry metrics.RegisterGatherer) *
 		Subsystem: ipamSubsystem,
 		Name:      "interface_creation_ops",
 		Help:      "Number of interfaces allocated",
+	}, []string{"subnet_id"})
+
+	m.ReleaseInterfaceOps = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: namespace,
+		Subsystem: ipamSubsystem,
+		Name:      "interface_deletion_ops",
+		Help:      "Numbers of interfaces released",
 	}, []string{"subnet_id"})
 
 	m.AvailableInterfaces = prometheus.NewGauge(prometheus.GaugeOpts{
@@ -175,6 +183,7 @@ func NewPrometheusMetrics(namespace string, registry metrics.RegisterGatherer) *
 	registry.MustRegister(m.AllocateIpOps)
 	registry.MustRegister(m.ReleaseIpOps)
 	registry.MustRegister(m.AllocateInterfaceOps)
+	registry.MustRegister(m.ReleaseInterfaceOps)
 	registry.MustRegister(m.AvailableInterfaces)
 	registry.MustRegister(m.InterfaceCandidates)
 	registry.MustRegister(m.EmptyInterfaceSlots)
@@ -204,6 +213,10 @@ func (p *prometheusMetrics) ResyncTrigger() trigger.MetricsObserver {
 
 func (p *prometheusMetrics) IncInterfaceAllocation(subnetID string) {
 	p.AllocateInterfaceOps.WithLabelValues(subnetID).Inc()
+}
+
+func (p *prometheusMetrics) IncInterfaceRelease(subnetID string) {
+	p.ReleaseInterfaceOps.WithLabelValues(subnetID).Inc()
 }
 
 func (p *prometheusMetrics) AddIPAllocation(subnetID string, allocated int64) {
@@ -342,6 +355,7 @@ type NoOpMetrics struct{}
 func (m *NoOpMetrics) AllocationAttempt(typ, status, subnetID string, observe float64)           {}
 func (m *NoOpMetrics) ReleaseAttempt(typ, status, subnetID string, observe float64)              {}
 func (m *NoOpMetrics) IncInterfaceAllocation(subnetID string)                                    {}
+func (m *NoOpMetrics) IncInterfaceRelease(subnetID string)                                       {}
 func (m *NoOpMetrics) AddIPAllocation(subnetID string, allocated int64)                          {}
 func (m *NoOpMetrics) AddIPRelease(subnetID string, released int64)                              {}
 func (m *NoOpMetrics) SetAllocatedIPs(typ string, allocated int)                                 {}

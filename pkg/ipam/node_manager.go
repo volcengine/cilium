@@ -59,6 +59,10 @@ type NodeOperations interface {
 	// AllocationAction.MaxIPsToAllocate.
 	CreateInterface(ctx context.Context, allocation *AllocationAction, scopedLog *logrus.Entry) (int, string, error)
 
+	// ReleaseInterface is called to release an IP-unused interface. This is only
+	// done if PrepareIPRelease indicates that all IPs are not used on this interface.
+	ReleaseInterface(ctx context.Context, r *ReleaseAction, scopedLog *logrus.Entry) (string, error)
+
 	// ResyncInterfacesAndIPs is called to synchronize the latest list of
 	// interfaces and IPs associated with the node. This function is called
 	// sparingly as this information is kept in sync based on the success
@@ -139,6 +143,7 @@ type MetricsAPI interface {
 	AllocationAttempt(typ, status, subnetID string, observe float64)
 	ReleaseAttempt(typ, status, subnetID string, observe float64)
 	IncInterfaceAllocation(subnetID string)
+	IncInterfaceRelease(subnetID string)
 	AddIPAllocation(subnetID string, allocated int64)
 	AddIPRelease(subnetID string, released int64)
 	SetAllocatedIPs(typ string, allocated int)
