@@ -239,11 +239,11 @@ func deriveVpcCIDRs(node *ciliumv2.CiliumNode) (primaryCIDR *cidr.CIDR, secondar
 		}
 	}
 	// return Volcengine vpc CIDR
-	if len(node.Status.Volcengine.ENIS) > 0 {
+	if len(node.Status.Volcengine.ENIs) > 0 {
 		if c, err := cidr.ParseCIDR(node.Spec.Volcengine.CIDRBlock); err == nil {
 			primaryCIDR = c
 		}
-		for _, eni := range node.Status.Volcengine.ENIS {
+		for _, eni := range node.Status.Volcengine.ENIs {
 			for _, sc := range eni.VPC.SecondaryCIDRBlocks {
 				if c, err := cidr.ParseCIDR(sc); err == nil {
 					secondaryCIDRs = append(secondaryCIDRs, c)
@@ -758,7 +758,7 @@ func (a *crdAllocator) buildAllocationResult(ip net.IP, ipInfo *ipamTypes.Alloca
 		}
 		return nil, fmt.Errorf("unable to find ENI %s", ipInfo.Resource)
 	case ipamOption.IPAMVolcengine:
-		for _, eni := range a.store.ownNode.Status.Volcengine.ENIS {
+		for _, eni := range a.store.ownNode.Status.Volcengine.ENIs {
 			if eni.NetworkInterfaceID != ipInfo.Resource {
 				continue
 			}
