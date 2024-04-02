@@ -109,8 +109,8 @@ func (in *ENIStatus) DeepEqual(other *ENIStatus) bool {
 		return false
 	}
 
-	if ((in.ENIS != nil) && (other.ENIS != nil)) || ((in.ENIS == nil) != (other.ENIS == nil)) {
-		in, other := &in.ENIS, &other.ENIS
+	if ((in.ENIs != nil) && (other.ENIs != nil)) || ((in.ENIs == nil) != (other.ENIs == nil)) {
+		in, other := &in.ENIs, &other.ENIs
 		if other == nil {
 			return false
 		}

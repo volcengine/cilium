@@ -209,5 +209,5 @@ type ENIStatus struct {
 	// ENIs is the list of ENIs on the node
 	//
 	// +optional
-	ENIS map[string]ENI `json:"enis,omitempty"`
+	ENIs map[string]ENI `json:"enis,omitempty"`
 }
