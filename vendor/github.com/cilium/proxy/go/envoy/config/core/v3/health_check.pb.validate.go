@@ -80,7 +80,6 @@ func (m *HealthStatusSet) validate(all bool) error {
 	if len(errors) > 0 {
 		return HealthStatusSetMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -609,40 +608,6 @@ func (m *HealthCheck) validate(all bool) error {
 
 	// no validation rules for EventLogPath
 
-	for idx, item := range m.GetEventLogger() {
-		_, _ = idx, item
-
-		if all {
-			switch v := interface{}(item).(type) {
-			case interface{ ValidateAll() error }:
-				if err := v.ValidateAll(); err != nil {
-					errors = append(errors, HealthCheckValidationError{
-						field:  fmt.Sprintf("EventLogger[%v]", idx),
-						reason: "embedded message failed validation",
-						cause:  err,
-					})
-				}
-			case interface{ Validate() error }:
-				if err := v.Validate(); err != nil {
-					errors = append(errors, HealthCheckValidationError{
-						field:  fmt.Sprintf("EventLogger[%v]", idx),
-						reason: "embedded message failed validation",
-						cause:  err,
-					})
-				}
-			}
-		} else if v, ok := interface{}(item).(interface{ Validate() error }); ok {
-			if err := v.Validate(); err != nil {
-				return HealthCheckValidationError{
-					field:  fmt.Sprintf("EventLogger[%v]", idx),
-					reason: "embedded message failed validation",
-					cause:  err,
-				}
-			}
-		}
-
-	}
-
 	if all {
 		switch v := interface{}(m.GetEventService()).(type) {
 		case interface{ ValidateAll() error }:
@@ -732,20 +697,9 @@ func (m *HealthCheck) validate(all bool) error {
 		}
 	}
 
-	oneofHealthCheckerPresent := false
-	switch v := m.HealthChecker.(type) {
+	switch m.HealthChecker.(type) {
+
 	case *HealthCheck_HttpHealthCheck_:
-		if v == nil {
-			err := HealthCheckValidationError{
-				field:  "HealthChecker",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofHealthCheckerPresent = true
 
 		if all {
 			switch v := interface{}(m.GetHttpHealthCheck()).(type) {
@@ -777,17 +731,6 @@ func (m *HealthCheck) validate(all bool) error {
 		}
 
 	case *HealthCheck_TcpHealthCheck_:
-		if v == nil {
-			err := HealthCheckValidationError{
-				field:  "HealthChecker",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofHealthCheckerPresent = true
 
 		if all {
 			switch v := interface{}(m.GetTcpHealthCheck()).(type) {
@@ -819,17 +762,6 @@ func (m *HealthCheck) validate(all bool) error {
 		}
 
 	case *HealthCheck_GrpcHealthCheck_:
-		if v == nil {
-			err := HealthCheckValidationError{
-				field:  "HealthChecker",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofHealthCheckerPresent = true
 
 		if all {
 			switch v := interface{}(m.GetGrpcHealthCheck()).(type) {
@@ -861,17 +793,6 @@ func (m *HealthCheck) validate(all bool) error {
 		}
 
 	case *HealthCheck_CustomHealthCheck_:
-		if v == nil {
-			err := HealthCheckValidationError{
-				field:  "HealthChecker",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofHealthCheckerPresent = true
 
 		if all {
 			switch v := interface{}(m.GetCustomHealthCheck()).(type) {
@@ -903,9 +824,6 @@ func (m *HealthCheck) validate(all bool) error {
 		}
 
 	default:
-		_ = v // ensures v is used
-	}
-	if !oneofHealthCheckerPresent {
 		err := HealthCheckValidationError{
 			field:  "HealthChecker",
 			reason: "value is required",
@@ -914,12 +832,12 @@ func (m *HealthCheck) validate(all bool) error {
 			return err
 		}
 		errors = append(errors, err)
+
 	}
 
 	if len(errors) > 0 {
 		return HealthCheckMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1015,20 +933,9 @@ func (m *HealthCheck_Payload) validate(all bool) error {
 
 	var errors []error
 
-	oneofPayloadPresent := false
-	switch v := m.Payload.(type) {
+	switch m.Payload.(type) {
+
 	case *HealthCheck_Payload_Text:
-		if v == nil {
-			err := HealthCheck_PayloadValidationError{
-				field:  "Payload",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofPayloadPresent = true
 
 		if utf8.RuneCountInString(m.GetText()) < 1 {
 			err := HealthCheck_PayloadValidationError{
@@ -1042,22 +949,9 @@ func (m *HealthCheck_Payload) validate(all bool) error {
 		}
 
 	case *HealthCheck_Payload_Binary:
-		if v == nil {
-			err := HealthCheck_PayloadValidationError{
-				field:  "Payload",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofPayloadPresent = true
 		// no validation rules for Binary
+
 	default:
-		_ = v // ensures v is used
-	}
-	if !oneofPayloadPresent {
 		err := HealthCheck_PayloadValidationError{
 			field:  "Payload",
 			reason: "value is required",
@@ -1066,12 +960,12 @@ func (m *HealthCheck_Payload) validate(all bool) error {
 			return err
 		}
 		errors = append(errors, err)
+
 	}
 
 	if len(errors) > 0 {
 		return HealthCheck_PayloadMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1453,7 +1347,7 @@ func (m *HealthCheck_HttpHealthCheck) validate(all bool) error {
 	if _, ok := _HealthCheck_HttpHealthCheck_Method_NotInLookup[m.GetMethod()]; ok {
 		err := HealthCheck_HttpHealthCheckValidationError{
 			field:  "Method",
-			reason: "value must not be in list [CONNECT]",
+			reason: "value must not be in list [6]",
 		}
 		if !all {
 			return err
@@ -1475,7 +1369,6 @@ func (m *HealthCheck_HttpHealthCheck) validate(all bool) error {
 	if len(errors) > 0 {
 		return HealthCheck_HttpHealthCheckMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1651,7 +1544,6 @@ func (m *HealthCheck_TcpHealthCheck) validate(all bool) error {
 	if len(errors) > 0 {
 		return HealthCheck_TcpHealthCheckMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1755,7 +1647,6 @@ func (m *HealthCheck_RedisHealthCheck) validate(all bool) error {
 	if len(errors) > 0 {
 		return HealthCheck_RedisHealthCheckMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1916,7 +1807,6 @@ func (m *HealthCheck_GrpcHealthCheck) validate(all bool) error {
 	if len(errors) > 0 {
 		return HealthCheck_GrpcHealthCheckMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -2029,18 +1919,9 @@ func (m *HealthCheck_CustomHealthCheck) validate(all bool) error {
 		errors = append(errors, err)
 	}
 
-	switch v := m.ConfigType.(type) {
+	switch m.ConfigType.(type) {
+
 	case *HealthCheck_CustomHealthCheck_TypedConfig:
-		if v == nil {
-			err := HealthCheck_CustomHealthCheckValidationError{
-				field:  "ConfigType",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetTypedConfig()).(type) {
@@ -2071,14 +1952,11 @@ func (m *HealthCheck_CustomHealthCheck) validate(all bool) error {
 			}
 		}
 
-	default:
-		_ = v // ensures v is used
 	}
 
 	if len(errors) > 0 {
 		return HealthCheck_CustomHealthCheckMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -2181,7 +2059,6 @@ func (m *HealthCheck_TlsOptions) validate(all bool) error {
 	if len(errors) > 0 {
 		return HealthCheck_TlsOptionsMultiError(errors)
 	}
-
 	return nil
 }
 

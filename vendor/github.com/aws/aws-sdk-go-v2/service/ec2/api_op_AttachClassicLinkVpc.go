@@ -4,15 +4,16 @@ package ec2
 
 import (
 	"context"
-	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This action is deprecated. Links an EC2-Classic instance to a
-// ClassicLink-enabled VPC through one or more of the VPC security groups. You
+// We are retiring EC2-Classic. We recommend that you migrate from EC2-Classic to
+// a VPC. For more information, see Migrate from EC2-Classic to a VPC (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/vpc-migrate.html)
+// in the Amazon Elastic Compute Cloud User Guide. Links an EC2-Classic instance to
+// a ClassicLink-enabled VPC through one or more of the VPC's security groups. You
 // cannot link an EC2-Classic instance to more than one VPC at a time. You can only
 // link an instance that's in the running state. An instance is automatically
 // unlinked from a VPC when it's stopped - you can link it to the VPC again when
@@ -37,18 +38,18 @@ func (c *Client) AttachClassicLinkVpc(ctx context.Context, params *AttachClassic
 
 type AttachClassicLinkVpcInput struct {
 
-	// The IDs of the security groups. You cannot specify security groups from a
-	// different VPC.
+	// The ID of one or more of the VPC's security groups. You cannot specify security
+	// groups from a different VPC.
 	//
 	// This member is required.
 	Groups []string
 
-	// The ID of the EC2-Classic instance.
+	// The ID of an EC2-Classic instance to link to the ClassicLink-enabled VPC.
 	//
 	// This member is required.
 	InstanceId *string
 
-	// The ID of the ClassicLink-enabled VPC.
+	// The ID of a ClassicLink-enabled VPC.
 	//
 	// This member is required.
 	VpcId *string
@@ -74,22 +75,12 @@ type AttachClassicLinkVpcOutput struct {
 }
 
 func (c *Client) addOperationAttachClassicLinkVpcMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpAttachClassicLinkVpc{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpAttachClassicLinkVpc{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "AttachClassicLinkVpc"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -110,22 +101,22 @@ func (c *Client) addOperationAttachClassicLinkVpcMiddlewares(stack *middleware.S
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addOpAttachClassicLinkVpcValidationMiddleware(stack); err != nil {
@@ -146,9 +137,6 @@ func (c *Client) addOperationAttachClassicLinkVpcMiddlewares(stack *middleware.S
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -156,6 +144,7 @@ func newServiceMetadataMiddleware_opAttachClassicLinkVpc(region string) *awsmidd
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "AttachClassicLinkVpc",
 	}
 }

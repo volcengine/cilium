@@ -22,9 +22,8 @@ var ioReadAllPkgs = []string{"io", "ioutil"}
 // Analyzer implements an analysis function that checks for the use of
 // io.ReadAll.
 var Analyzer = &analysis.Analyzer{
-	Name:     "ioreadall",
+	Name:     "readall",
 	Doc:      `check for "io.ReadAll" instances`,
-	URL:      "https://github.com/cilium/linters",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

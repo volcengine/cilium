@@ -64,7 +64,6 @@ func (m *ResourceLocator) validate(all bool) error {
 	if len(errors) > 0 {
 		return ResourceLocatorMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -195,7 +194,6 @@ func (m *ResourceName) validate(all bool) error {
 	if len(errors) > 0 {
 		return ResourceNameMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -392,7 +390,6 @@ func (m *DiscoveryRequest) validate(all bool) error {
 	if len(errors) > 0 {
 		return DiscoveryRequestMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -563,7 +560,6 @@ func (m *DiscoveryResponse) validate(all bool) error {
 	if len(errors) > 0 {
 		return DiscoveryResponseMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -797,7 +793,6 @@ func (m *DeltaDiscoveryRequest) validate(all bool) error {
 	if len(errors) > 0 {
 		return DeltaDiscoveryRequestMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1002,7 +997,6 @@ func (m *DeltaDiscoveryResponse) validate(all bool) error {
 	if len(errors) > 0 {
 		return DeltaDiscoveryResponseMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1101,18 +1095,9 @@ func (m *DynamicParameterConstraints) validate(all bool) error {
 
 	var errors []error
 
-	switch v := m.Type.(type) {
+	switch m.Type.(type) {
+
 	case *DynamicParameterConstraints_Constraint:
-		if v == nil {
-			err := DynamicParameterConstraintsValidationError{
-				field:  "Type",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetConstraint()).(type) {
@@ -1144,16 +1129,6 @@ func (m *DynamicParameterConstraints) validate(all bool) error {
 		}
 
 	case *DynamicParameterConstraints_OrConstraints:
-		if v == nil {
-			err := DynamicParameterConstraintsValidationError{
-				field:  "Type",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetOrConstraints()).(type) {
@@ -1185,16 +1160,6 @@ func (m *DynamicParameterConstraints) validate(all bool) error {
 		}
 
 	case *DynamicParameterConstraints_AndConstraints:
-		if v == nil {
-			err := DynamicParameterConstraintsValidationError{
-				field:  "Type",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetAndConstraints()).(type) {
@@ -1226,16 +1191,6 @@ func (m *DynamicParameterConstraints) validate(all bool) error {
 		}
 
 	case *DynamicParameterConstraints_NotConstraints:
-		if v == nil {
-			err := DynamicParameterConstraintsValidationError{
-				field:  "Type",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetNotConstraints()).(type) {
@@ -1266,14 +1221,11 @@ func (m *DynamicParameterConstraints) validate(all bool) error {
 			}
 		}
 
-	default:
-		_ = v // ensures v is used
 	}
 
 	if len(errors) > 0 {
 		return DynamicParameterConstraintsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1525,7 +1477,6 @@ func (m *Resource) validate(all bool) error {
 	if len(errors) > 0 {
 		return ResourceMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1625,33 +1576,12 @@ func (m *DynamicParameterConstraints_SingleConstraint) validate(all bool) error 
 
 	// no validation rules for Key
 
-	oneofConstraintTypePresent := false
-	switch v := m.ConstraintType.(type) {
+	switch m.ConstraintType.(type) {
+
 	case *DynamicParameterConstraints_SingleConstraint_Value:
-		if v == nil {
-			err := DynamicParameterConstraints_SingleConstraintValidationError{
-				field:  "ConstraintType",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofConstraintTypePresent = true
 		// no validation rules for Value
+
 	case *DynamicParameterConstraints_SingleConstraint_Exists_:
-		if v == nil {
-			err := DynamicParameterConstraints_SingleConstraintValidationError{
-				field:  "ConstraintType",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofConstraintTypePresent = true
 
 		if all {
 			switch v := interface{}(m.GetExists()).(type) {
@@ -1683,9 +1613,6 @@ func (m *DynamicParameterConstraints_SingleConstraint) validate(all bool) error 
 		}
 
 	default:
-		_ = v // ensures v is used
-	}
-	if !oneofConstraintTypePresent {
 		err := DynamicParameterConstraints_SingleConstraintValidationError{
 			field:  "ConstraintType",
 			reason: "value is required",
@@ -1694,12 +1621,12 @@ func (m *DynamicParameterConstraints_SingleConstraint) validate(all bool) error 
 			return err
 		}
 		errors = append(errors, err)
+
 	}
 
 	if len(errors) > 0 {
 		return DynamicParameterConstraints_SingleConstraintMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1840,7 +1767,6 @@ func (m *DynamicParameterConstraints_ConstraintList) validate(all bool) error {
 	if len(errors) > 0 {
 		return DynamicParameterConstraints_ConstraintListMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1947,7 +1873,6 @@ func (m *DynamicParameterConstraints_SingleConstraint_Exists) validate(all bool)
 	if len(errors) > 0 {
 		return DynamicParameterConstraints_SingleConstraint_ExistsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -2060,7 +1985,6 @@ func (m *Resource_CacheControl) validate(all bool) error {
 	if len(errors) > 0 {
 		return Resource_CacheControlMultiError(errors)
 	}
-
 	return nil
 }
 

@@ -23,7 +23,6 @@ type CapacityReservationItem struct {
 	TimeSlot                        string                                           `json:"TimeSlot" xml:"TimeSlot"`
 	ReservedInstanceId              string                                           `json:"ReservedInstanceId" xml:"ReservedInstanceId"`
 	Platform                        string                                           `json:"Platform" xml:"Platform"`
-	CapacityReservationOwnerId      string                                           `json:"CapacityReservationOwnerId" xml:"CapacityReservationOwnerId"`
 	RegionId                        string                                           `json:"RegionId" xml:"RegionId"`
 	StartTime                       string                                           `json:"StartTime" xml:"StartTime"`
 	EndTime                         string                                           `json:"EndTime" xml:"EndTime"`
@@ -34,6 +33,6 @@ type CapacityReservationItem struct {
 	InstanceChargeType              string                                           `json:"InstanceChargeType" xml:"InstanceChargeType"`
 	Description                     string                                           `json:"Description" xml:"Description"`
 	PrivatePoolOptionsId            string                                           `json:"PrivatePoolOptionsId" xml:"PrivatePoolOptionsId"`
-	Tags                            TagsInDescribeCapacityReservations               `json:"Tags" xml:"Tags"`
 	AllocatedResources              AllocatedResourcesInDescribeCapacityReservations `json:"AllocatedResources" xml:"AllocatedResources"`
+	Tags                            TagsInDescribeCapacityReservations               `json:"Tags" xml:"Tags"`
 }

@@ -68,11 +68,11 @@ type Device struct {
 	cookieChecker CookieChecker
 
 	pool struct {
-		inboundElementsContainer  *WaitPool
-		outboundElementsContainer *WaitPool
-		messageBuffers            *WaitPool
-		inboundElements           *WaitPool
-		outboundElements          *WaitPool
+		outboundElementsSlice *WaitPool
+		inboundElementsSlice  *WaitPool
+		messageBuffers        *WaitPool
+		inboundElements       *WaitPool
+		outboundElements      *WaitPool
 	}
 
 	queue struct {
@@ -368,8 +368,6 @@ func (device *Device) RemoveAllPeers() {
 }
 
 func (device *Device) Close() {
-	device.ipcMutex.Lock()
-	defer device.ipcMutex.Unlock()
 	device.state.Lock()
 	defer device.state.Unlock()
 	if device.isClosed() {

@@ -18,10 +18,8 @@
 package server
 
 import (
-	"fmt"
 	"net"
 	"os"
-	"strings"
 	"syscall"
 
 	"golang.org/x/sys/unix"
@@ -35,22 +33,7 @@ const (
 
 func buildTcpMD5Sig(address, key string) *unix.TCPMD5Sig {
 	t := unix.TCPMD5Sig{}
-
-	var addr net.IP
-	if strings.Contains(address, "/") {
-		var err error
-		var ipnet *net.IPNet
-		addr, ipnet, err = net.ParseCIDR(address)
-		if err != nil {
-			return nil
-		}
-		prefixlen, _ := ipnet.Mask.Size()
-		t.Prefixlen = uint8(prefixlen)
-		t.Flags = unix.TCP_MD5SIG_FLAG_PREFIX
-	} else {
-		addr = net.ParseIP(address)
-	}
-
+	addr := net.ParseIP(address)
 	if addr.To4() != nil {
 		t.Addr.Family = unix.AF_INET
 		copy(t.Addr.Data[2:], addr.To4())
@@ -73,17 +56,8 @@ func setTCPMD5SigSockopt(l *net.TCPListener, address string, key string) error {
 
 	var sockerr error
 	t := buildTcpMD5Sig(address, key)
-	if t == nil {
-		return fmt.Errorf("unable to generate TcpMD5Sig from %s", address)
-	}
 	if err := sc.Control(func(s uintptr) {
-		opt := unix.TCP_MD5SIG
-
-		if t.Prefixlen != 0 {
-			opt = unix.TCP_MD5SIG_EXT
-		}
-
-		sockerr = unix.SetsockoptTCPMD5Sig(int(s), unix.IPPROTO_TCP, opt, t)
+		sockerr = unix.SetsockoptTCPMD5Sig(int(s), unix.IPPROTO_TCP, unix.TCP_MD5SIG, t)
 	}); err != nil {
 		return err
 	}
@@ -118,16 +92,7 @@ func setTCPMinTTLSockopt(conn *net.TCPConn, ttl int) error {
 	return setsockOptInt(sc, level, name, ttl)
 }
 
-func setTCPMSSSockopt(conn *net.TCPConn, mss uint16) error {
-	family := extractFamilyFromTCPConn(conn)
-	sc, err := conn.SyscallConn()
-	if err != nil {
-		return err
-	}
-	return setsockoptTcpMss(sc, family, mss)
-}
-
-func dialerControl(logger log.Logger, network, address string, c syscall.RawConn, ttl, minTtl uint8, mss uint16, password string, bindInterface string) error {
+func dialerControl(logger log.Logger, network, address string, c syscall.RawConn, ttl, minTtl uint8, password string, bindInterface string) error {
 	family := syscall.AF_INET
 	raddr, _ := net.ResolveTCPAddr("tcp", address)
 	if raddr.IP.To4() == nil {
@@ -181,20 +146,6 @@ func dialerControl(logger log.Logger, network, address string, c syscall.RawConn
 			return sockerr
 		}
 	}
-
-	if mss != 0 {
-		if err := c.Control(func(fd uintptr) {
-			level := syscall.IPPROTO_TCP
-			name := syscall.TCP_MAXSEG
-			sockerr = os.NewSyscallError("setsockopt", syscall.SetsockoptInt(int(fd), level, name, int(mss)))
-		}); err != nil {
-			return err
-		}
-		if sockerr != nil {
-			return sockerr
-		}
-	}
-
 	if bindInterface != "" {
 		if err := setBindToDevSockopt(c, bindInterface); err != nil {
 			return err

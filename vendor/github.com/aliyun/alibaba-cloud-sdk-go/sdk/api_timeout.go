@@ -233,15 +233,10 @@ var apiTimeouts = `{
 }
 `
 
-var timeout map[string]map[string]int
-
-func init() {
-	timeout = make(map[string]map[string]int)
-	json.Unmarshal([]byte(apiTimeouts), &timeout)
-}
-
 func getAPIMaxTimeout(product, actionName string) (time.Duration, bool) {
-	if timeout == nil {
+	timeout := make(map[string]map[string]int)
+	err := json.Unmarshal([]byte(apiTimeouts), &timeout)
+	if err != nil {
 		return 0 * time.Millisecond, false
 	}
 

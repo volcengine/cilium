@@ -141,7 +141,6 @@ func (m *WebSocketClient) validate(all bool) error {
 	if len(errors) > 0 {
 		return WebSocketClientMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -313,7 +312,6 @@ func (m *WebSocketServer) validate(all bool) error {
 	if len(errors) > 0 {
 		return WebSocketServerMultiError(errors)
 	}
-
 	return nil
 }
 

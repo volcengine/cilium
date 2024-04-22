@@ -142,7 +142,6 @@ func (m *LocalRateLimit) validate(all bool) error {
 	if len(errors) > 0 {
 		return LocalRateLimitMultiError(errors)
 	}
-
 	return nil
 }
 

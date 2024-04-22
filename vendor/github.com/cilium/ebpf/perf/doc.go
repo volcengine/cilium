@@ -1,5 +1,6 @@
-// Package perf allows reading from BPF perf event arrays.
+// Package perf allows interacting with Linux perf_events.
 //
-// A perf event array contains multiple perf event ringbuffers which can be used
-// to exchange sample like data with user space.
+// BPF allows submitting custom perf_events to a ring-buffer set up
+// by userspace. This is very useful to push things like packet samples
+// from BPF to a daemon running in user space.
 package perf

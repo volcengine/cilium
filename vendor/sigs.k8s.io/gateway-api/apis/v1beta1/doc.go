@@ -16,7 +16,6 @@ limitations under the License.
 
 // Package v1beta1 contains API Schema definitions for the
 // gateway.networking.k8s.io API group.
-//
 // +kubebuilder:object:generate=true
 // +groupName=gateway.networking.k8s.io
 package v1beta1

@@ -90,11 +90,7 @@ type CreateVerifiedAccessEndpointInput struct {
 	PolicyDocument *string
 
 	// The IDs of the security groups to associate with the Verified Access endpoint.
-	// Required if AttachmentType is set to vpc .
 	SecurityGroupIds []string
-
-	// The options for server side encryption.
-	SseSpecification *types.VerifiedAccessSseSpecificationRequest
 
 	// The tags to assign to the Verified Access endpoint.
 	TagSpecifications []types.TagSpecification
@@ -104,7 +100,7 @@ type CreateVerifiedAccessEndpointInput struct {
 
 type CreateVerifiedAccessEndpointOutput struct {
 
-	// Details about the Verified Access endpoint.
+	// The ID of the Verified Access endpoint.
 	VerifiedAccessEndpoint *types.VerifiedAccessEndpoint
 
 	// Metadata pertaining to the operation's result.
@@ -114,22 +110,12 @@ type CreateVerifiedAccessEndpointOutput struct {
 }
 
 func (c *Client) addOperationCreateVerifiedAccessEndpointMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpCreateVerifiedAccessEndpoint{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpCreateVerifiedAccessEndpoint{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateVerifiedAccessEndpoint"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -150,22 +136,22 @@ func (c *Client) addOperationCreateVerifiedAccessEndpointMiddlewares(stack *midd
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opCreateVerifiedAccessEndpointMiddleware(stack, options); err != nil {
@@ -187,9 +173,6 @@ func (c *Client) addOperationCreateVerifiedAccessEndpointMiddlewares(stack *midd
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
-		return err
-	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -232,6 +215,7 @@ func newServiceMetadataMiddleware_opCreateVerifiedAccessEndpoint(region string) 
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "CreateVerifiedAccessEndpoint",
 	}
 }

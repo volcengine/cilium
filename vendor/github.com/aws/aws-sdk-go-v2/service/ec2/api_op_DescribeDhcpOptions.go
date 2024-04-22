@@ -14,7 +14,7 @@ import (
 
 // Describes one or more of your DHCP options sets. For more information, see DHCP
 // options sets (https://docs.aws.amazon.com/vpc/latest/userguide/VPC_DHCP_Options.html)
-// in the Amazon VPC User Guide.
+// in the Amazon Virtual Private Cloud User Guide.
 func (c *Client) DescribeDhcpOptions(ctx context.Context, params *DescribeDhcpOptionsInput, optFns ...func(*Options)) (*DescribeDhcpOptionsOutput, error) {
 	if params == nil {
 		params = &DescribeDhcpOptionsInput{}
@@ -42,7 +42,7 @@ type DescribeDhcpOptionsInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
-	// The filters.
+	// One or more filters.
 	//   - dhcp-options-id - The ID of a DHCP options set.
 	//   - key - The key for one of the options (for example, domain-name ).
 	//   - value - The value for one of the options.
@@ -85,22 +85,12 @@ type DescribeDhcpOptionsOutput struct {
 }
 
 func (c *Client) addOperationDescribeDhcpOptionsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpDescribeDhcpOptions{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpDescribeDhcpOptions{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeDhcpOptions"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -121,22 +111,22 @@ func (c *Client) addOperationDescribeDhcpOptionsMiddlewares(stack *middleware.St
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeDhcpOptions(options.Region), middleware.Before); err != nil {
@@ -152,9 +142,6 @@ func (c *Client) addOperationDescribeDhcpOptionsMiddlewares(stack *middleware.St
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
-		return err
-	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -258,6 +245,7 @@ func newServiceMetadataMiddleware_opDescribeDhcpOptions(region string) *awsmiddl
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "DescribeDhcpOptions",
 	}
 }

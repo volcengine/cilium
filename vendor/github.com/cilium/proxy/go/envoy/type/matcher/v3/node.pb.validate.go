@@ -123,7 +123,6 @@ func (m *NodeMatcher) validate(all bool) error {
 	if len(errors) > 0 {
 		return NodeMatcherMultiError(errors)
 	}
-
 	return nil
 }
 

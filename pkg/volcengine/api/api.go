@@ -6,20 +6,21 @@ package api
 import (
 	"context"
 	"fmt"
-	"maps"
+	"time"
 
 	"github.com/volcengine/volcengine-go-sdk/service/ecs"
 	"github.com/volcengine/volcengine-go-sdk/service/vpc"
 	"github.com/volcengine/volcengine-go-sdk/volcengine"
 	"github.com/volcengine/volcengine-go-sdk/volcengine/session"
+	"golang.org/x/exp/maps"
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/cilium/cilium/pkg/api/helpers"
 	"github.com/cilium/cilium/pkg/cidr"
 	ipamTypes "github.com/cilium/cilium/pkg/ipam/types"
-	"github.com/cilium/cilium/pkg/time"
 	eniTypes "github.com/cilium/cilium/pkg/volcengine/eni/types"
 	"github.com/cilium/cilium/pkg/volcengine/types"
+	"github.com/cilium/cilium/pkg/volcengine/utils"
 )
 
 var apiWriteBackoff = wait.Backoff{
@@ -659,7 +660,7 @@ func (c *Client) describeInstanceTypes(ctx context.Context) ([]*ecs.InstanceType
 func (c *Client) createNetworkInterface(ctx context.Context, ipCount int, subnetId string, groups []string, tags map[string]string) (*vpc.DescribeNetworkInterfaceAttributesOutput, error) {
 	input := &vpc.CreateNetworkInterfaceInput{
 		//ProjectName:                    volcengine.String(c.projectName),
-		SecondaryPrivateIpAddressCount: volcengine.Int64(max(int64(0), int64(ipCount))),
+		SecondaryPrivateIpAddressCount: volcengine.Int64(utils.Max(int64(0), int64(ipCount))),
 		SecurityGroupIds:               volcengine.StringSlice(groups),
 		SubnetId:                       volcengine.String(subnetId),
 		Tags:                           buildENITagsForCreateNetworkInterface(tags),

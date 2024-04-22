@@ -81,7 +81,6 @@ type DescribeSendFileResultsRequest struct {
 	OwnerAccount         string                        `position:"Query" name:"OwnerAccount"`
 	OwnerId              requests.Integer              `position:"Query" name:"OwnerId"`
 	InstanceId           string                        `position:"Query" name:"InstanceId"`
-	InvocationStatus     string                        `position:"Query" name:"InvocationStatus"`
 	Name                 string                        `position:"Query" name:"Name"`
 }
 

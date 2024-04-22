@@ -42,7 +42,7 @@ type MeshPod struct {
 	Name      string
 	Namespace string
 	Address   string
-	rc        rest.Interface
+	rc        *rest.RESTClient
 	rcfg      *rest.Config
 }
 
@@ -56,12 +56,12 @@ const (
 func (m *MeshPod) MakeRequestAndExpectEventuallyConsistentResponse(t *testing.T, exp http.ExpectedResponse, timeoutConfig config.TimeoutConfig) {
 	t.Helper()
 
-	http.AwaitConvergence(t, timeoutConfig.RequiredConsecutiveSuccesses, timeoutConfig.MaxTimeToConsistency, func(elapsed time.Duration) bool {
-		req := makeRequest(t, exp.Request)
+	req := makeRequest(exp.Request)
 
-		resp, err := m.request(req)
+	http.AwaitConvergence(t, timeoutConfig.RequiredConsecutiveSuccesses, timeoutConfig.MaxTimeToConsistency, func(elapsed time.Duration) bool {
+		resp, err := m.request(makeRequest(exp.Request))
 		if err != nil {
-			t.Logf("Request %v failed, not ready yet: %v (after %v)", req, err.Error(), elapsed)
+			t.Logf("Request failed, not ready yet: %v (after %v)", err.Error(), elapsed)
 			return false
 		}
 		t.Logf("Got resp %v", resp)
@@ -75,13 +75,12 @@ func (m *MeshPod) MakeRequestAndExpectEventuallyConsistentResponse(t *testing.T,
 	t.Logf("Request passed")
 }
 
-func makeRequest(t *testing.T, r http.Request) []string {
+func makeRequest(r http.Request) []string {
 	protocol := strings.ToLower(r.Protocol)
 	if protocol == "" {
 		protocol = "http"
 	}
-	host := http.CalculateHost(t, r.Host, protocol)
-	args := []string{"client", fmt.Sprintf("%s://%s%s", protocol, host, r.Path)}
+	args := []string{"client", fmt.Sprintf("%s://%s%s", protocol, r.Host, r.Path)}
 	if r.Method != "" {
 		args = append(args, "--method="+r.Method)
 	}
@@ -89,6 +88,17 @@ func makeRequest(t *testing.T, r http.Request) []string {
 		args = append(args, "-H", fmt.Sprintf("%v: %v", k, v))
 	}
 	return args
+}
+
+func (m *MeshPod) SendRequest(t *testing.T, exp http.ExpectedResponse) {
+	resp, err := m.request(makeRequest(exp.Request))
+	if err != nil {
+		t.Fatalf("Got error: %v", err)
+	}
+	t.Logf("Got resp %v", resp)
+	if err := compareRequest(exp, resp); err != nil {
+		t.Fatalf("expectations failed: %v", err)
+	}
 }
 
 func compareRequest(exp http.ExpectedResponse, resp Response) error {
@@ -150,10 +160,9 @@ func (m *MeshPod) request(args []string) (Response, error) {
 }
 
 func ConnectToApp(t *testing.T, s *suite.ConformanceTestSuite, app MeshApplication) MeshPod {
-	return ConnectToAppInNamespace(t, s, app, "gateway-conformance-mesh")
-}
+	// hardcoded, for now
+	ns := "gateway-conformance-mesh"
 
-func ConnectToAppInNamespace(t *testing.T, s *suite.ConformanceTestSuite, app MeshApplication, ns string) MeshPod {
 	lbls, _ := klabels.Parse(string(app))
 
 	podsList := v1.PodList{}
@@ -172,7 +181,7 @@ func ConnectToAppInNamespace(t *testing.T, s *suite.ConformanceTestSuite, app Me
 		Name:      podName,
 		Namespace: podNamespace,
 		Address:   pod.Status.PodIP,
-		rc:        s.Clientset.CoreV1().RESTClient(),
+		rc:        s.RESTClient,
 		rcfg:      s.RestConfig,
 	}
 }

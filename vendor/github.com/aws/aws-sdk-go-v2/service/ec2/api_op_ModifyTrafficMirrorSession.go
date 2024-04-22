@@ -4,7 +4,6 @@ package ec2
 
 import (
 	"context"
-	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -48,10 +47,7 @@ type ModifyTrafficMirrorSessionInput struct {
 	// header. To mirror a subset, set this to the length (in bytes) to mirror. For
 	// example, if you set this value to 100, then the first 100 bytes that meet the
 	// filter criteria are copied to the target. Do not specify this parameter when you
-	// want to mirror the entire packet. For sessions with Network Load Balancer (NLB)
-	// traffic mirror targets, the default PacketLength will be set to 8500. Valid
-	// values are 1-8500. Setting a PacketLength greater than 8500 will result in an
-	// error response.
+	// want to mirror the entire packet.
 	PacketLength *int32
 
 	// The properties that you want to remove from the Traffic Mirror session. When
@@ -89,22 +85,12 @@ type ModifyTrafficMirrorSessionOutput struct {
 }
 
 func (c *Client) addOperationModifyTrafficMirrorSessionMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpModifyTrafficMirrorSession{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpModifyTrafficMirrorSession{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "ModifyTrafficMirrorSession"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -125,22 +111,22 @@ func (c *Client) addOperationModifyTrafficMirrorSessionMiddlewares(stack *middle
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addOpModifyTrafficMirrorSessionValidationMiddleware(stack); err != nil {
@@ -161,9 +147,6 @@ func (c *Client) addOperationModifyTrafficMirrorSessionMiddlewares(stack *middle
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -171,6 +154,7 @@ func newServiceMetadataMiddleware_opModifyTrafficMirrorSession(region string) *a
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "ModifyTrafficMirrorSession",
 	}
 }

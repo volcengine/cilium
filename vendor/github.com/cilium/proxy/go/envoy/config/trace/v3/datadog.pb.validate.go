@@ -84,7 +84,6 @@ func (m *DatadogConfig) validate(all bool) error {
 	if len(errors) > 0 {
 		return DatadogConfigMultiError(errors)
 	}
-
 	return nil
 }
 

@@ -25,10 +25,11 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 	"unsafe"
+
+	securejoin "github.com/cyphar/filepath-securejoin"
 )
 
 var (
@@ -388,11 +389,11 @@ func (f *ConsumeFuzzer) GetUint16() (uint16, error) {
 }
 
 func (f *ConsumeFuzzer) GetUint32() (uint32, error) {
-	u32, err := f.GetNBytes(4)
+	i, err := f.GetInt()
 	if err != nil {
-		return 0, err
+		return uint32(0), err
 	}
-	return binary.BigEndian.Uint32(u32), nil
+	return uint32(i), nil
 }
 
 func (f *ConsumeFuzzer) GetUint64() (uint64, error) {
@@ -411,27 +412,26 @@ func (f *ConsumeFuzzer) GetUint64() (uint64, error) {
 }
 
 func (f *ConsumeFuzzer) GetBytes() ([]byte, error) {
-	var length uint32
-	var err error
-	length, err = f.GetUint32()
+	if f.position >= f.dataTotal {
+		return nil, errors.New("not enough bytes to create byte array")
+	}
+	length, err := f.GetUint32()
 	if err != nil {
 		return nil, errors.New("not enough bytes to create byte array")
 	}
-
-	if length == 0 {
-		length = 30
+	if f.position+length > MaxTotalLen {
+		return nil, errors.New("created too large a string")
 	}
-	bytesLeft := f.dataTotal - f.position
-	if bytesLeft <= 0 {
+	byteBegin := f.position - 1
+	if byteBegin >= f.dataTotal {
 		return nil, errors.New("not enough bytes to create byte array")
 	}
-
-	// If the length is the same as bytes left, we will not overflow
-	// the remaining bytes.
-	if length != bytesLeft {
-		length = length % bytesLeft
+	if length == 0 {
+		return nil, errors.New("zero-length is not supported")
 	}
-	byteBegin := f.position
+	if byteBegin+length >= f.dataTotal {
+		return nil, errors.New("not enough bytes to create byte array")
+	}
 	if byteBegin+length < byteBegin {
 		return nil, errors.New("numbers overflow")
 	}
@@ -482,7 +482,6 @@ func (f *ConsumeFuzzer) FuzzMap(m interface{}) error {
 }
 
 func returnTarBytes(buf []byte) ([]byte, error) {
-	return buf, nil
 	// Count files
 	var fileCounter int
 	tr := tar.NewReader(bytes.NewReader(buf))
@@ -505,8 +504,7 @@ func returnTarBytes(buf []byte) ([]byte, error) {
 func setTarHeaderFormat(hdr *tar.Header, f *ConsumeFuzzer) error {
 	ind, err := f.GetInt()
 	if err != nil {
-		hdr.Format = tar.FormatGNU
-		//return nil
+		return err
 	}
 	switch ind % 4 {
 	case 0:
@@ -567,17 +565,71 @@ func setTarHeaderTypeflag(hdr *tar.Header, f *ConsumeFuzzer) error {
 	return nil
 }
 
+func tooSmallFileBody(length uint32) bool {
+	if length < 2 {
+		return true
+	}
+	if length < 4 {
+		return true
+	}
+	if length < 10 {
+		return true
+	}
+	if length < 100 {
+		return true
+	}
+	if length < 500 {
+		return true
+	}
+	if length < 1000 {
+		return true
+	}
+	if length < 2000 {
+		return true
+	}
+	if length < 4000 {
+		return true
+	}
+	if length < 8000 {
+		return true
+	}
+	if length < 16000 {
+		return true
+	}
+	if length < 32000 {
+		return true
+	}
+	if length < 64000 {
+		return true
+	}
+	if length < 128000 {
+		return true
+	}
+	if length < 264000 {
+		return true
+	}
+	return false
+}
+
 func (f *ConsumeFuzzer) createTarFileBody() ([]byte, error) {
-	return f.GetBytes()
-	/*length, err := f.GetUint32()
+	length, err := f.GetUint32()
 	if err != nil {
 		return nil, errors.New("not enough bytes to create byte array")
+	}
+
+	shouldUseLargeFileBody, err := f.GetBool()
+	if err != nil {
+		return nil, errors.New("not enough bytes to check long file body")
+	}
+
+	if shouldUseLargeFileBody && tooSmallFileBody(length) {
+		return nil, errors.New("File body was too small")
 	}
 
 	// A bit of optimization to attempt to create a file body
 	// when we don't have as many bytes left as "length"
 	remainingBytes := f.dataTotal - f.position
-	if remainingBytes <= 0 {
+	if remainingBytes == 0 {
 		return nil, errors.New("created too large a string")
 	}
 	if f.position+length > MaxTotalLen {
@@ -597,15 +649,14 @@ func (f *ConsumeFuzzer) createTarFileBody() ([]byte, error) {
 		return nil, errors.New("numbers overflow")
 	}
 	f.position = byteBegin + length
-	return f.data[byteBegin:f.position], nil*/
+	return f.data[byteBegin:f.position], nil
 }
 
 // getTarFileName is similar to GetString(), but creates string based
 // on the length of f.data to reduce the likelihood of overflowing
 // f.data.
 func (f *ConsumeFuzzer) getTarFilename() (string, error) {
-	return f.GetString()
-	/*length, err := f.GetUint32()
+	length, err := f.GetUint32()
 	if err != nil {
 		return "nil", errors.New("not enough bytes to create string")
 	}
@@ -613,8 +664,13 @@ func (f *ConsumeFuzzer) getTarFilename() (string, error) {
 	// A bit of optimization to attempt to create a file name
 	// when we don't have as many bytes left as "length"
 	remainingBytes := f.dataTotal - f.position
-	if remainingBytes <= 0 {
+	if remainingBytes == 0 {
 		return "nil", errors.New("created too large a string")
+	}
+	if remainingBytes < 50 {
+		length = length % remainingBytes
+	} else if f.dataTotal < 500 {
+		length = length % f.dataTotal
 	}
 	if f.position > MaxTotalLen {
 		return "nil", errors.New("created too large a string")
@@ -630,12 +686,7 @@ func (f *ConsumeFuzzer) getTarFilename() (string, error) {
 		return "nil", errors.New("numbers overflow")
 	}
 	f.position = byteBegin + length
-	return string(f.data[byteBegin:f.position]), nil*/
-}
-
-type TarFile struct {
-	Hdr  *tar.Header
-	Body []byte
+	return string(f.data[byteBegin:f.position]), nil
 }
 
 // TarBytes returns valid bytes for a tar archive
@@ -644,101 +695,28 @@ func (f *ConsumeFuzzer) TarBytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var tarFiles []*TarFile
-	tarFiles = make([]*TarFile, 0)
-
-	const maxNoOfFiles = 100
-	for i := 0; i < numberOfFiles%maxNoOfFiles; i++ {
-		var filename string
-		var filebody []byte
-		var sec, nsec int
-		var err error
-
-		filename, err = f.getTarFilename()
-		if err != nil {
-			var sb strings.Builder
-			sb.WriteString("file-")
-			sb.WriteString(strconv.Itoa(i))
-			filename = sb.String()
-		}
-		filebody, err = f.createTarFileBody()
-		if err != nil {
-			var sb strings.Builder
-			sb.WriteString("filebody-")
-			sb.WriteString(strconv.Itoa(i))
-			filebody = []byte(sb.String())
-		}
-
-		sec, err = f.GetInt()
-		if err != nil {
-			sec = 1672531200 // beginning of 2023
-		}
-		nsec, err = f.GetInt()
-		if err != nil {
-			nsec = 1703980800 // end of 2023
-		}
-
-		hdr := &tar.Header{
-			Name:    filename,
-			Size:    int64(len(filebody)),
-			Mode:    0o600,
-			ModTime: time.Unix(int64(sec), int64(nsec)),
-		}
-		if err := setTarHeaderTypeflag(hdr, f); err != nil {
-			return []byte(""), err
-		}
-		if err := setTarHeaderFormat(hdr, f); err != nil {
-			return []byte(""), err
-		}
-		tf := &TarFile{
-			Hdr:  hdr,
-			Body: filebody,
-		}
-		tarFiles = append(tarFiles, tf)
-	}
 
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
 	defer tw.Close()
 
-	for _, tf := range tarFiles {
-		tw.WriteHeader(tf.Hdr)
-		tw.Write(tf.Body)
-	}
-	return buf.Bytes(), nil
-}
-
-// This is similar to TarBytes, but it returns a series of
-// files instead of raw tar bytes. The advantage of this
-// api is that it is cheaper in terms of cpu power to
-// modify or check the files in the fuzzer with TarFiles()
-// because it avoids creating a tar reader.
-func (f *ConsumeFuzzer) TarFiles() ([]*TarFile, error) {
-	numberOfFiles, err := f.GetInt()
-	if err != nil {
-		return nil, err
-	}
-	var tarFiles []*TarFile
-	tarFiles = make([]*TarFile, 0)
-
-	const maxNoOfFiles = 100
+	const maxNoOfFiles = 1000
 	for i := 0; i < numberOfFiles%maxNoOfFiles; i++ {
 		filename, err := f.getTarFilename()
 		if err != nil {
-			return tarFiles, err
+			return returnTarBytes(buf.Bytes())
 		}
 		filebody, err := f.createTarFileBody()
 		if err != nil {
-			return tarFiles, err
+			return returnTarBytes(buf.Bytes())
 		}
-
 		sec, err := f.GetInt()
 		if err != nil {
-			return tarFiles, err
+			return returnTarBytes(buf.Bytes())
 		}
 		nsec, err := f.GetInt()
 		if err != nil {
-			return tarFiles, err
+			return returnTarBytes(buf.Bytes())
 		}
 
 		hdr := &tar.Header{
@@ -748,18 +726,19 @@ func (f *ConsumeFuzzer) TarFiles() ([]*TarFile, error) {
 			ModTime: time.Unix(int64(sec), int64(nsec)),
 		}
 		if err := setTarHeaderTypeflag(hdr, f); err != nil {
-			hdr.Typeflag = tar.TypeReg
+			return returnTarBytes(buf.Bytes())
 		}
 		if err := setTarHeaderFormat(hdr, f); err != nil {
-			return tarFiles, err // should not happend
+			return returnTarBytes(buf.Bytes())
 		}
-		tf := &TarFile{
-			Hdr:  hdr,
-			Body: filebody,
+		if err := tw.WriteHeader(hdr); err != nil {
+			return returnTarBytes(buf.Bytes())
 		}
-		tarFiles = append(tarFiles, tf)
+		if _, err := tw.Write(filebody); err != nil {
+			return returnTarBytes(buf.Bytes())
+		}
 	}
-	return tarFiles, nil
+	return buf.Bytes(), nil
 }
 
 // CreateFiles creates pseudo-random files in rootDir.
@@ -788,10 +767,10 @@ func (f *ConsumeFuzzer) CreateFiles(rootDir string) error {
 				return errors.New("could not get fileName")
 			}
 		}
-		if strings.Contains(fileName, "..") || (len(fileName) > 0 && fileName[0] == 47) || strings.Contains(fileName, "\\") {
-			continue
+		fullFilePath, err := securejoin.SecureJoin(rootDir, fileName)
+		if err != nil {
+			return err
 		}
-		fullFilePath := filepath.Join(rootDir, fileName)
 
 		// Find the subdirectory of the file
 		if subDir := filepath.Dir(fileName); subDir != "" && subDir != "." {
@@ -799,14 +778,20 @@ func (f *ConsumeFuzzer) CreateFiles(rootDir string) error {
 			if strings.Contains(subDir, "../") || (len(subDir) > 0 && subDir[0] == 47) || strings.Contains(subDir, "\\") {
 				continue
 			}
-			dirPath := filepath.Join(rootDir, subDir)
+			dirPath, err := securejoin.SecureJoin(rootDir, subDir)
+			if err != nil {
+				continue
+			}
 			if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 				err2 := os.MkdirAll(dirPath, 0o777)
 				if err2 != nil {
 					continue
 				}
 			}
-			fullFilePath = filepath.Join(dirPath, fileName)
+			fullFilePath, err = securejoin.SecureJoin(dirPath, fileName)
+			if err != nil {
+				continue
+			}
 		} else {
 			// Create symlink
 			createSymlink, err := f.GetBool()

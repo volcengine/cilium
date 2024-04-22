@@ -1320,13 +1320,12 @@ func deserializeRoute(m []byte) (Route, error) {
 // RouteGetOptions contains a set of options to use with
 // RouteGetWithOptions
 type RouteGetOptions struct {
-	Iif      string
-	Oif      string
-	VrfName  string
-	SrcAddr  net.IP
-	UID      *uint32
-	Mark     int
-	FIBMatch bool
+	Iif     string
+	Oif     string
+	VrfName string
+	SrcAddr net.IP
+	UID     *uint32
+	Mark    int
 }
 
 // RouteGetWithOptions gets a route to a specific destination from the host system.
@@ -1362,9 +1361,6 @@ func (h *Handle) RouteGetWithOptions(destination net.IP, options *RouteGetOption
 		msg.Src_len = bitlen
 	}
 	msg.Flags = unix.RTM_F_LOOKUP_TABLE
-	if options != nil && options.FIBMatch {
-		msg.Flags |= unix.RTM_F_FIB_MATCH
-	}
 	req.AddData(msg)
 
 	rtaDst := nl.NewRtAttr(unix.RTA_DST, destinationData)
@@ -1458,24 +1454,21 @@ func (h *Handle) RouteGet(destination net.IP) ([]Route, error) {
 // RouteSubscribe takes a chan down which notifications will be sent
 // when routes are added or deleted. Close the 'done' chan to stop subscription.
 func RouteSubscribe(ch chan<- RouteUpdate, done <-chan struct{}) error {
-	return routeSubscribeAt(netns.None(), netns.None(), ch, done, nil, false, 0, nil, false)
+	return routeSubscribeAt(netns.None(), netns.None(), ch, done, nil, false)
 }
 
 // RouteSubscribeAt works like RouteSubscribe plus it allows the caller
 // to choose the network namespace in which to subscribe (ns).
 func RouteSubscribeAt(ns netns.NsHandle, ch chan<- RouteUpdate, done <-chan struct{}) error {
-	return routeSubscribeAt(ns, netns.None(), ch, done, nil, false, 0, nil, false)
+	return routeSubscribeAt(ns, netns.None(), ch, done, nil, false)
 }
 
 // RouteSubscribeOptions contains a set of options to use with
 // RouteSubscribeWithOptions.
 type RouteSubscribeOptions struct {
-	Namespace              *netns.NsHandle
-	ErrorCallback          func(error)
-	ListExisting           bool
-	ReceiveBufferSize      int
-	ReceiveBufferForceSize bool
-	ReceiveTimeout         *unix.Timeval
+	Namespace     *netns.NsHandle
+	ErrorCallback func(error)
+	ListExisting  bool
 }
 
 // RouteSubscribeWithOptions work like RouteSubscribe but enable to
@@ -1486,26 +1479,13 @@ func RouteSubscribeWithOptions(ch chan<- RouteUpdate, done <-chan struct{}, opti
 		none := netns.None()
 		options.Namespace = &none
 	}
-	return routeSubscribeAt(*options.Namespace, netns.None(), ch, done, options.ErrorCallback, options.ListExisting,
-		options.ReceiveBufferSize, options.ReceiveTimeout, options.ReceiveBufferForceSize)
+	return routeSubscribeAt(*options.Namespace, netns.None(), ch, done, options.ErrorCallback, options.ListExisting)
 }
 
-func routeSubscribeAt(newNs, curNs netns.NsHandle, ch chan<- RouteUpdate, done <-chan struct{}, cberr func(error), listExisting bool,
-	rcvbuf int, rcvTimeout *unix.Timeval, rcvbufForce bool) error {
+func routeSubscribeAt(newNs, curNs netns.NsHandle, ch chan<- RouteUpdate, done <-chan struct{}, cberr func(error), listExisting bool) error {
 	s, err := nl.SubscribeAt(newNs, curNs, unix.NETLINK_ROUTE, unix.RTNLGRP_IPV4_ROUTE, unix.RTNLGRP_IPV6_ROUTE)
 	if err != nil {
 		return err
-	}
-	if rcvTimeout != nil {
-		if err := s.SetReceiveTimeout(rcvTimeout); err != nil {
-			return err
-		}
-	}
-	if rcvbuf != 0 {
-		err = s.SetReceiveBufferSize(rcvbuf, rcvbufForce)
-		if err != nil {
-			return err
-		}
 	}
 	if done != nil {
 		go func() {

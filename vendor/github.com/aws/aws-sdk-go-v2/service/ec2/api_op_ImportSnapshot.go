@@ -4,7 +4,6 @@ package ec2
 
 import (
 	"context"
-	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -62,7 +61,10 @@ type ImportSnapshotInput struct {
 	// a KmsKeyId is specified, the Encrypted flag must also be set. The KMS key
 	// identifier may be provided in any of the following formats:
 	//   - Key ID
-	//   - Key alias
+	//   - Key alias. The alias ARN contains the arn:aws:kms namespace, followed by the
+	//   Region of the key, the Amazon Web Services account ID of the key owner, the
+	//   alias namespace, and then the key alias. For example,
+	//   arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
 	//   - ARN using key ID. The ID ARN contains the arn:aws:kms namespace, followed by
 	//   the Region of the key, the Amazon Web Services account ID of the key owner, the
 	//   key namespace, and then the key ID. For example,
@@ -108,22 +110,12 @@ type ImportSnapshotOutput struct {
 }
 
 func (c *Client) addOperationImportSnapshotMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpImportSnapshot{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpImportSnapshot{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "ImportSnapshot"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -144,22 +136,22 @@ func (c *Client) addOperationImportSnapshotMiddlewares(stack *middleware.Stack, 
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opImportSnapshot(options.Region), middleware.Before); err != nil {
@@ -177,9 +169,6 @@ func (c *Client) addOperationImportSnapshotMiddlewares(stack *middleware.Stack, 
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -187,6 +176,7 @@ func newServiceMetadataMiddleware_opImportSnapshot(region string) *awsmiddleware
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "ImportSnapshot",
 	}
 }

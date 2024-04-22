@@ -4,7 +4,6 @@ package ec2
 
 import (
 	"context"
-	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
@@ -12,8 +11,12 @@ import (
 )
 
 // Deletes a security group. If you attempt to delete a security group that is
-// associated with an instance or network interface or is referenced by another
-// security group, the operation fails with DependencyViolation .
+// associated with an instance, or is referenced by another security group, the
+// operation fails with InvalidGroup.InUse in EC2-Classic or DependencyViolation
+// in EC2-VPC. We are retiring EC2-Classic. We recommend that you migrate from
+// EC2-Classic to a VPC. For more information, see Migrate from EC2-Classic to a
+// VPC (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/vpc-migrate.html) in
+// the Amazon Elastic Compute Cloud User Guide.
 func (c *Client) DeleteSecurityGroup(ctx context.Context, params *DeleteSecurityGroupInput, optFns ...func(*Options)) (*DeleteSecurityGroupOutput, error) {
 	if params == nil {
 		params = &DeleteSecurityGroupInput{}
@@ -37,12 +40,12 @@ type DeleteSecurityGroupInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
-	// The ID of the security group.
+	// The ID of the security group. Required for a nondefault VPC.
 	GroupId *string
 
-	// [Default VPC] The name of the security group. You can specify either the
-	// security group name or the security group ID. For security groups in a
-	// nondefault VPC, you must specify the security group ID.
+	// [EC2-Classic, default VPC] The name of the security group. You can specify
+	// either the security group name or the security group ID. For security groups in
+	// a nondefault VPC, you must specify the security group ID.
 	GroupName *string
 
 	noSmithyDocumentSerde
@@ -56,22 +59,12 @@ type DeleteSecurityGroupOutput struct {
 }
 
 func (c *Client) addOperationDeleteSecurityGroupMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpDeleteSecurityGroup{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpDeleteSecurityGroup{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DeleteSecurityGroup"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -92,22 +85,22 @@ func (c *Client) addOperationDeleteSecurityGroupMiddlewares(stack *middleware.St
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDeleteSecurityGroup(options.Region), middleware.Before); err != nil {
@@ -125,9 +118,6 @@ func (c *Client) addOperationDeleteSecurityGroupMiddlewares(stack *middleware.St
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -135,6 +125,7 @@ func newServiceMetadataMiddleware_opDeleteSecurityGroup(region string) *awsmiddl
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "DeleteSecurityGroup",
 	}
 }

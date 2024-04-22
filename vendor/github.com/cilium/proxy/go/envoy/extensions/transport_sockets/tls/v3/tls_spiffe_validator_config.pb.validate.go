@@ -105,7 +105,6 @@ func (m *SPIFFECertValidatorConfig) validate(all bool) error {
 	if len(errors) > 0 {
 		return SPIFFECertValidatorConfigMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -248,7 +247,6 @@ func (m *SPIFFECertValidatorConfig_TrustDomain) validate(all bool) error {
 	if len(errors) > 0 {
 		return SPIFFECertValidatorConfig_TrustDomainMultiError(errors)
 	}
-
 	return nil
 }
 

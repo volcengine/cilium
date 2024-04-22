@@ -119,7 +119,6 @@ func (m *ZipkinConfig) validate(all bool) error {
 	if len(errors) > 0 {
 		return ZipkinConfigMultiError(errors)
 	}
-
 	return nil
 }
 

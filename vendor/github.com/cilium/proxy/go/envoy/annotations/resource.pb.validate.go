@@ -62,7 +62,6 @@ func (m *ResourceAnnotation) validate(all bool) error {
 	if len(errors) > 0 {
 		return ResourceAnnotationMultiError(errors)
 	}
-
 	return nil
 }
 

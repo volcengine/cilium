@@ -42,7 +42,7 @@ type DescribeVpcsInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
-	// The filters.
+	// One or more filters.
 	//   - cidr - The primary IPv4 CIDR block of the VPC. The CIDR block you specify
 	//   must exactly match the VPC's CIDR block for information to be returned for the
 	//   VPC. Must contain the slash followed by one or two digits (for example, /28 ).
@@ -83,7 +83,7 @@ type DescribeVpcsInput struct {
 	// the end of the items returned by the previous request.
 	NextToken *string
 
-	// The IDs of the VPCs. Default: Describes all your VPCs.
+	// One or more VPC IDs. Default: Describes all your VPCs.
 	VpcIds []string
 
 	noSmithyDocumentSerde
@@ -105,22 +105,12 @@ type DescribeVpcsOutput struct {
 }
 
 func (c *Client) addOperationDescribeVpcsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpDescribeVpcs{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpDescribeVpcs{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeVpcs"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -141,22 +131,22 @@ func (c *Client) addOperationDescribeVpcsMiddlewares(stack *middleware.Stack, op
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeVpcs(options.Region), middleware.Before); err != nil {
@@ -172,9 +162,6 @@ func (c *Client) addOperationDescribeVpcsMiddlewares(stack *middleware.Stack, op
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
-		return err
-	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -608,6 +595,7 @@ func newServiceMetadataMiddleware_opDescribeVpcs(region string) *awsmiddleware.R
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "DescribeVpcs",
 	}
 }

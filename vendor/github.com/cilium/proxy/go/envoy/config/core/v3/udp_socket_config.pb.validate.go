@@ -104,7 +104,6 @@ func (m *UdpSocketConfig) validate(all bool) error {
 	if len(errors) > 0 {
 		return UdpSocketConfigMultiError(errors)
 	}
-
 	return nil
 }
 

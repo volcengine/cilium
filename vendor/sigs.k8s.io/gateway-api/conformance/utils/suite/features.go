@@ -27,55 +27,71 @@ import "k8s.io/apimachinery/pkg/util/sets"
 type SupportedFeature string
 
 // -----------------------------------------------------------------------------
-// Features - Gateway Conformance (Core)
+// Features - Standard (Core)
 // -----------------------------------------------------------------------------
 
 const (
-	// This option indicates support for Gateway.
+	// This option indicates support for ReferenceGrant (core conformance).
+	// Opting out of this requires an implementation to have clearly implemented
+	// and documented equivalent safeguards.
+	SupportReferenceGrant SupportedFeature = "ReferenceGrant"
+	// This option indicates support for Gateway (core conformance).
 	// Opting out of this is allowed only for GAMMA-only implementations
 	SupportGateway SupportedFeature = "Gateway"
 )
 
-// GatewayCoreFeatures are the features that are required to be conformant with
-// the Gateway resource.
-var GatewayCoreFeatures = sets.New(
+// StandardCoreFeatures are the features that are required to be conformant with
+// the Core API features (e.g. GatewayClass, Gateway, e.t.c.).
+//
+// TODO: we need clarity for standard vs experimental features.
+// See: https://github.com/kubernetes-sigs/gateway-api/issues/1891
+var StandardCoreFeatures = sets.New(
+	SupportReferenceGrant,
 	SupportGateway,
 )
 
 // -----------------------------------------------------------------------------
-// Features - Gateway Conformance (Extended)
+// Features - Standard (Extended)
 // -----------------------------------------------------------------------------
 
 const (
-	// This option indicates that the Gateway can also use port 8080
-	SupportGatewayPort8080 SupportedFeature = "GatewayPort8080"
-
-	// SupportGatewayStaticAddresses option indicates that the Gateway is capable
-	// of allocating pre-determined addresses, rather than dynamically having
-	// addresses allocated for it.
-	SupportGatewayStaticAddresses SupportedFeature = "GatewayStaticAddresses"
+	// This option indicates GatewayClass will update the observedGeneration in
+	// it's conditions when reconciling (extended conformance).
+	//
+	// NOTE: we intend to make this core and require implementations to do it
+	//       as we expect this is something every implementation should be able
+	//       to do and it's ideal behavior.
+	//
+	//       See: https://github.com/kubernetes-sigs/gateway-api/issues/1780
+	SupportGatewayClassObservedGenerationBump SupportedFeature = "GatewayClassObservedGenerationBump"
 )
 
 // StandardExtendedFeatures are extra generic features that implementations may
 // choose to support as an opt-in.
-var GatewayExtendedFeatures = sets.New(
-	SupportGatewayPort8080,
-	SupportGatewayStaticAddresses,
-).Insert(GatewayCoreFeatures.UnsortedList()...)
+//
+// TODO: we need clarity for standard vs experimental features.
+// See: https://github.com/kubernetes-sigs/gateway-api/issues/1891
+var StandardExtendedFeatures = sets.New(
+	SupportGatewayClassObservedGenerationBump,
+).Insert(StandardCoreFeatures.UnsortedList()...)
 
 // -----------------------------------------------------------------------------
-// Features - ReferenceGrant Conformance (Core)
+// Features - Experimental (Extended)
 // -----------------------------------------------------------------------------
 
 const (
-	// This option indicates support for ReferenceGrant.
-	SupportReferenceGrant SupportedFeature = "ReferenceGrant"
+	// This option indicates support for Destination Port matching.
+	SupportRouteDestinationPortMatching SupportedFeature = "RouteDestinationPortMatching"
 )
 
-// ReferenceGrantCoreFeatures includes all SupportedFeatures needed to be
-// conformant with the ReferenceGrant resource.
-var ReferenceGrantCoreFeatures = sets.New(
-	SupportReferenceGrant,
+// ExperimentalExtendedFeatures are extra generic features that are currently
+// only available in our experimental release channel, and at an extended
+// support level.
+//
+// TODO: we need clarity for standard vs experimental features.
+// See: https://github.com/kubernetes-sigs/gateway-api/issues/1891
+var ExperimentalExtendedFeatures = sets.New(
+	SupportRouteDestinationPortMatching,
 )
 
 // -----------------------------------------------------------------------------
@@ -87,9 +103,9 @@ const (
 	SupportHTTPRoute SupportedFeature = "HTTPRoute"
 )
 
-// HTTPRouteCoreFeatures includes all SupportedFeatures needed to be conformant with
-// the HTTPRoute resource.
-var HTTPRouteCoreFeatures = sets.New(
+// HTTPCoreFeatures includes all SupportedFeatures needed to be conformant with
+// the HTTPRoute.
+var HTTPCoreFeatures = sets.New(
 	SupportHTTPRoute,
 )
 
@@ -105,7 +121,7 @@ const (
 	SupportHTTPRouteMethodMatching SupportedFeature = "HTTPRouteMethodMatching"
 
 	// This option indicates support for HTTPRoute response header modification (extended conformance).
-	SupportHTTPRouteResponseHeaderModification SupportedFeature = "HTTPRouteResponseHeaderModification"
+	SupportHTTPResponseHeaderModification SupportedFeature = "HTTPResponseHeaderModification"
 
 	// This option indicates support for HTTPRoute port redirect (extended conformance).
 	SupportHTTPRoutePortRedirect SupportedFeature = "HTTPRoutePortRedirect"
@@ -113,69 +129,33 @@ const (
 	// This option indicates support for HTTPRoute scheme redirect (extended conformance).
 	SupportHTTPRouteSchemeRedirect SupportedFeature = "HTTPRouteSchemeRedirect"
 
-	// This option indicates support for HTTPRoute path redirect (extended conformance).
+	// This option indicates support for HTTPRoute path redirect (experimental conformance).
 	SupportHTTPRoutePathRedirect SupportedFeature = "HTTPRoutePathRedirect"
 
-	// This option indicates support for HTTPRoute host rewrite (extended conformance)
+	// This option indicates support for HTTPRoute host rewrite (experimental conformance)
 	SupportHTTPRouteHostRewrite SupportedFeature = "HTTPRouteHostRewrite"
 
-	// This option indicates support for HTTPRoute path rewrite (extended conformance)
+	// This option indicates support for HTTPRoute path rewrite (experimental conformance)
 	SupportHTTPRoutePathRewrite SupportedFeature = "HTTPRoutePathRewrite"
 
 	// This option indicates support for HTTPRoute request mirror (extended conformance).
 	SupportHTTPRouteRequestMirror SupportedFeature = "HTTPRouteRequestMirror"
-
-	// This option indicates support for multiple RequestMirror filters within the same HTTPRoute rule (extended conformance).
-	SupportHTTPRouteRequestMultipleMirrors SupportedFeature = "HTTPRouteRequestMultipleMirrors"
-
-	// This option indicates support for HTTPRoute request timeouts (extended conformance).
-	SupportHTTPRouteRequestTimeout SupportedFeature = "HTTPRouteRequestTimeout"
-
-	// This option indicates support for HTTPRoute backendRequest timeouts (extended conformance).
-	SupportHTTPRouteBackendTimeout SupportedFeature = "HTTPRouteBackendTimeout"
-
-	// This option indicates support for HTTPRoute with a backendref with an appProtocol 'kubernetes.io/h2c'
-	SupportHTTPRouteBackendProtocolH2C SupportedFeature = "HTTPRouteBackendProtocolH2C"
-
-	// This option indicates support for HTTPRoute with a backendref with an appProtoocol 'kubernetes.io/ws'
-	SupportHTTPRouteBackendProtocolWebSocket SupportedFeature = "HTTPRouteBackendProtocolWebSocket"
 )
 
-// HTTPRouteExtendedFeatures includes all the supported features for HTTPRoute
+// HTTPExtendedFeatures includes all the supported features for HTTPRoute
 // conformance and can be used to opt-in to run all HTTPRoute tests, including
 // extended features.
-var HTTPRouteExtendedFeatures = sets.New(
+var HTTPExtendedFeatures = sets.New(
 	SupportHTTPRouteQueryParamMatching,
 	SupportHTTPRouteMethodMatching,
-	SupportHTTPRouteResponseHeaderModification,
+	SupportHTTPResponseHeaderModification,
 	SupportHTTPRoutePortRedirect,
 	SupportHTTPRouteSchemeRedirect,
 	SupportHTTPRoutePathRedirect,
 	SupportHTTPRouteHostRewrite,
 	SupportHTTPRoutePathRewrite,
 	SupportHTTPRouteRequestMirror,
-	SupportHTTPRouteRequestMultipleMirrors,
-	SupportHTTPRouteRequestTimeout,
-	SupportHTTPRouteBackendTimeout,
-)
-
-// -----------------------------------------------------------------------------
-// Features - HTTPRoute Conformance (Experimental)
-// -----------------------------------------------------------------------------
-
-const (
-	// This option indicates support for Destination Port matching.
-	SupportHTTPRouteDestinationPortMatching SupportedFeature = "HTTPRouteDestinationPortMatching"
-)
-
-// HTTPRouteExperimentalFeatures includes all the supported experimental features, currently only
-// available in our experimental release channel.
-// Implementations have the flexibility to opt-in for either specific features or the entire set.
-var HTTPRouteExperimentalFeatures = sets.New(
-	SupportHTTPRouteDestinationPortMatching,
-	SupportHTTPRouteBackendProtocolH2C,
-	SupportHTTPRouteBackendProtocolWebSocket,
-)
+).Insert(HTTPCoreFeatures.UnsortedList()...)
 
 // -----------------------------------------------------------------------------
 // Features - TLSRoute Conformance (Core)
@@ -188,7 +168,7 @@ const (
 
 // TLSCoreFeatures includes all the supported features for the TLSRoute API at
 // a Core level of support.
-var TLSRouteCoreFeatures = sets.New(
+var TLSCoreFeatures = sets.New(
 	SupportTLSRoute,
 )
 
@@ -216,10 +196,8 @@ var MeshCoreFeatures = sets.New(
 //
 // NOTE: as new feature sets are added they should be inserted into this set.
 var AllFeatures = sets.New[SupportedFeature]().
-	Insert(GatewayExtendedFeatures.UnsortedList()...).
-	Insert(ReferenceGrantCoreFeatures.UnsortedList()...).
-	Insert(HTTPRouteCoreFeatures.UnsortedList()...).
-	Insert(HTTPRouteExtendedFeatures.UnsortedList()...).
-	Insert(HTTPRouteExperimentalFeatures.UnsortedList()...).
-	Insert(TLSRouteCoreFeatures.UnsortedList()...).
+	Insert(StandardExtendedFeatures.UnsortedList()...).
+	Insert(ExperimentalExtendedFeatures.UnsortedList()...).
+	Insert(HTTPExtendedFeatures.UnsortedList()...).
+	Insert(TLSCoreFeatures.UnsortedList()...).
 	Insert(MeshCoreFeatures.UnsortedList()...)

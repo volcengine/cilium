@@ -23,7 +23,6 @@ const (
 var Analyzer = &analysis.Analyzer{
 	Name:     "timeafter",
 	Doc:      `check for "time.After" instances in loops`,
-	URL:      "https://github.com/cilium/linters",
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 	Run:      run,
 }

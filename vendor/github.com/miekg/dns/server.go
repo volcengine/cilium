@@ -71,12 +71,12 @@ type response struct {
 	tsigTimersOnly bool
 	tsigStatus     error
 	tsigRequestMAC string
-	tsigSecret     map[string]string // the tsig secrets
-	udp            net.PacketConn    // i/o connection if UDP was used
-	tcp            net.Conn          // i/o connection if TCP was used
-	udpSession     *SessionUDP       // oob data to get egress interface right
-	pcSession      net.Addr          // address to use when writing to a generic net.PacketConn
-	writer         Writer            // writer to output the raw DNS bits
+	tsigProvider   TsigProvider
+	udp            net.PacketConn // i/o connection if UDP was used
+	tcp            net.Conn       // i/o connection if TCP was used
+	udpSession     *SessionUDP    // oob data to get egress interface right
+	pcSession      net.Addr       // address to use when writing to a generic net.PacketConn
+	writer         Writer         // writer to output the raw DNS bits
 }
 
 // handleRefused returns a HandlerFunc that returns REFUSED for every request it gets.
@@ -211,6 +211,8 @@ type Server struct {
 	WriteTimeout time.Duration
 	// TCP idle timeout for multiple queries, if nil, defaults to 8 * time.Second (RFC 5966).
 	IdleTimeout func() time.Duration
+	// An implementation of the TsigProvider interface. If defined it replaces TsigSecret and is used for all TSIG operations.
+	TsigProvider TsigProvider
 	// Secret(s) for Tsig map[<zonename>]<base64 secret>. The zonename must be in canonical form (lowercase, fqdn, see RFC 4034 Section 6.2).
 	TsigSecret map[string]string
 	// If NotifyStartedFunc is set it is called once the server has started listening.
@@ -227,15 +229,25 @@ type Server struct {
 	// AcceptMsgFunc will check the incoming message and will reject it early in the process.
 	// By default DefaultMsgAcceptFunc will be used.
 	MsgAcceptFunc MsgAcceptFunc
+	// SessionUDPFactory creates SessionUDP instances. The default implementation will be
+	// used if nil.
+	SessionUDPFactory SessionUDPFactory
 
 	// Shutdown handling
 	lock     sync.RWMutex
 	started  bool
 	shutdown chan struct{}
 	conns    map[net.Conn]struct{}
+}
 
-	// A pool for UDP message buffers.
-	udpPool sync.Pool
+func (srv *Server) tsigProvider() TsigProvider {
+	if srv.TsigProvider != nil {
+		return srv.TsigProvider
+	}
+	if srv.TsigSecret != nil {
+		return tsigSecretProvider(srv.TsigSecret)
+	}
+	return nil
 }
 
 func (srv *Server) isStarted() bool {
@@ -243,12 +255,6 @@ func (srv *Server) isStarted() bool {
 	started := srv.started
 	srv.lock.RUnlock()
 	return started
-}
-
-func makeUDPBuffer(size int) func() interface{} {
-	return func() interface{} {
-		return make([]byte, size)
-	}
 }
 
 func (srv *Server) init() {
@@ -264,8 +270,11 @@ func (srv *Server) init() {
 	if srv.Handler == nil {
 		srv.Handler = DefaultServeMux
 	}
+	if srv.SessionUDPFactory == nil {
+		srv.SessionUDPFactory = defaultSessionUDPFactory
+	}
 
-	srv.udpPool.New = makeUDPBuffer(srv.UDPSize)
+	srv.SessionUDPFactory.InitPool(srv.UDPSize)
 }
 
 func unlockOnce(l sync.Locker) func() {
@@ -320,7 +329,7 @@ func (srv *Server) ListenAndServe() error {
 			return err
 		}
 		u := l.(*net.UDPConn)
-		if e := setUDPSocketOptions(u); e != nil {
+		if e := srv.SessionUDPFactory.SetSocketOptions(u); e != nil {
 			u.Close()
 			return e
 		}
@@ -349,7 +358,7 @@ func (srv *Server) ActivateAndServe() error {
 		// Check PacketConn interface's type is valid and value
 		// is not nil
 		if t, ok := srv.PacketConn.(*net.UDPConn); ok && t != nil {
-			if e := setUDPSocketOptions(t); e != nil {
+			if e := srv.SessionUDPFactory.SetSocketOptions(t); e != nil {
 				return e
 			}
 		}
@@ -512,13 +521,18 @@ func (srv *Server) serveUDP(l net.PacketConn) error {
 			return err
 		}
 		if len(m) < headerSize {
-			if cap(m) == srv.UDPSize {
-				srv.udpPool.Put(m[:srv.UDPSize])
+			if sUDP != nil {
+				(*sUDP).Discard()
 			}
 			continue
 		}
 		wg.Add(1)
-		go srv.serveUDPPacket(&wg, m, l, sUDP, sPC)
+		go func() {
+			srv.serveUDPPacket(&wg, m, l, sUDP, sPC)
+			if sUDP != nil {
+				(*sUDP).Discard()
+			}
+		}()
 	}
 
 	return nil
@@ -526,7 +540,7 @@ func (srv *Server) serveUDP(l net.PacketConn) error {
 
 // Serve a new TCP connection.
 func (srv *Server) serveTCPConn(wg *sync.WaitGroup, rw net.Conn) {
-	w := &response{tsigSecret: srv.TsigSecret, tcp: rw}
+	w := &response{tsigProvider: srv.tsigProvider(), tcp: rw}
 	if srv.DecorateWriter != nil {
 		w.writer = srv.DecorateWriter(w)
 	} else {
@@ -581,7 +595,7 @@ func (srv *Server) serveTCPConn(wg *sync.WaitGroup, rw net.Conn) {
 
 // Serve a new UDP request.
 func (srv *Server) serveUDPPacket(wg *sync.WaitGroup, m []byte, u net.PacketConn, udpSession *SessionUDP, pcSession net.Addr) {
-	w := &response{tsigSecret: srv.TsigSecret, udp: u, udpSession: udpSession, pcSession: pcSession}
+	w := &response{tsigProvider: srv.tsigProvider(), udp: u, udpSession: udpSession, pcSession: pcSession}
 	if srv.DecorateWriter != nil {
 		w.writer = srv.DecorateWriter(w)
 	} else {
@@ -624,28 +638,16 @@ func (srv *Server) serveDNS(m []byte, w *response) {
 		w.WriteMsg(req)
 		fallthrough
 	case MsgIgnore:
-		if w.udp != nil && cap(m) == srv.UDPSize {
-			srv.udpPool.Put(m[:srv.UDPSize])
-		}
-
 		return
 	}
 
 	w.tsigStatus = nil
-	if w.tsigSecret != nil {
+	if w.tsigProvider != nil {
 		if t := req.IsTsig(); t != nil {
-			if secret, ok := w.tsigSecret[t.Hdr.Name]; ok {
-				w.tsigStatus = TsigVerify(m, secret, "", false)
-			} else {
-				w.tsigStatus = ErrSecret
-			}
+			w.tsigStatus = TsigVerifyWithProvider(m, w.tsigProvider, "", false)
 			w.tsigTimersOnly = false
-			w.tsigRequestMAC = req.Extra[len(req.Extra)-1].(*TSIG).MAC
+			w.tsigRequestMAC = t.MAC
 		}
-	}
-
-	if w.udp != nil && cap(m) == srv.UDPSize {
-		srv.udpPool.Put(m[:srv.UDPSize])
 	}
 
 	srv.Handler.ServeDNS(w, req) // Writes back to the client
@@ -683,14 +685,9 @@ func (srv *Server) readUDP(conn *net.UDPConn, timeout time.Duration) ([]byte, *S
 	}
 	srv.lock.RUnlock()
 
-	m := srv.udpPool.Get().([]byte)
-	n, s, err := ReadFromSessionUDP(conn, m)
-	if err != nil {
-		srv.udpPool.Put(m)
-		return nil, nil, err
-	}
-	m = m[:n]
-	return m, s, nil
+	m, s, err := srv.SessionUDPFactory.ReadRequest(conn)
+	return m, &s, err
+
 }
 
 func (srv *Server) readPacketConn(conn net.PacketConn, timeout time.Duration) ([]byte, net.Addr, error) {
@@ -701,14 +698,7 @@ func (srv *Server) readPacketConn(conn net.PacketConn, timeout time.Duration) ([
 	}
 	srv.lock.RUnlock()
 
-	m := srv.udpPool.Get().([]byte)
-	n, addr, err := conn.ReadFrom(m)
-	if err != nil {
-		srv.udpPool.Put(m)
-		return nil, nil, err
-	}
-	m = m[:n]
-	return m, addr, nil
+	return srv.SessionUDPFactory.ReadRequestConn(conn)
 }
 
 // WriteMsg implements the ResponseWriter.WriteMsg method.
@@ -718,9 +708,9 @@ func (w *response) WriteMsg(m *Msg) (err error) {
 	}
 
 	var data []byte
-	if w.tsigSecret != nil { // if no secrets, dont check for the tsig (which is a longer check)
+	if w.tsigProvider != nil { // if no provider, dont check for the tsig (which is a longer check)
 		if t := m.IsTsig(); t != nil {
-			data, w.tsigRequestMAC, err = TsigGenerate(m, w.tsigSecret[t.Hdr.Name], w.tsigRequestMAC, w.tsigTimersOnly)
+			data, w.tsigRequestMAC, err = TsigGenerateWithProvider(m, w.tsigProvider, w.tsigRequestMAC, w.tsigTimersOnly)
 			if err != nil {
 				return err
 			}
@@ -744,8 +734,8 @@ func (w *response) Write(m []byte) (int, error) {
 
 	switch {
 	case w.udp != nil:
-		if u, ok := w.udp.(*net.UDPConn); ok {
-			return WriteToSessionUDP(u, m, w.udpSession)
+		if _, ok := w.udp.(*net.UDPConn); ok {
+			return (*w.udpSession).WriteResponse(m)
 		}
 		return w.udp.WriteTo(m, w.pcSession)
 	case w.tcp != nil:
@@ -766,7 +756,7 @@ func (w *response) Write(m []byte) (int, error) {
 func (w *response) LocalAddr() net.Addr {
 	switch {
 	case w.udp != nil:
-		return w.udp.LocalAddr()
+		return (*w.udpSession).LocalAddr()
 	case w.tcp != nil:
 		return w.tcp.LocalAddr()
 	default:
@@ -778,7 +768,7 @@ func (w *response) LocalAddr() net.Addr {
 func (w *response) RemoteAddr() net.Addr {
 	switch {
 	case w.udpSession != nil:
-		return w.udpSession.RemoteAddr()
+		return (*w.udpSession).RemoteAddr()
 	case w.pcSession != nil:
 		return w.pcSession
 	case w.tcp != nil:

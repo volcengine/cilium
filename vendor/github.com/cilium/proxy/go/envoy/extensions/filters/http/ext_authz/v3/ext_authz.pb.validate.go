@@ -256,20 +256,9 @@ func (m *ExtAuthz) validate(all bool) error {
 		}
 	}
 
-	// no validation rules for IncludeTlsSession
+	switch m.Services.(type) {
 
-	switch v := m.Services.(type) {
 	case *ExtAuthz_GrpcService:
-		if v == nil {
-			err := ExtAuthzValidationError{
-				field:  "Services",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetGrpcService()).(type) {
@@ -301,16 +290,6 @@ func (m *ExtAuthz) validate(all bool) error {
 		}
 
 	case *ExtAuthz_HttpService:
-		if v == nil {
-			err := ExtAuthzValidationError{
-				field:  "Services",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetHttpService()).(type) {
@@ -341,14 +320,11 @@ func (m *ExtAuthz) validate(all bool) error {
 			}
 		}
 
-	default:
-		_ = v // ensures v is used
 	}
 
 	if len(errors) > 0 {
 		return ExtAuthzMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -462,7 +438,6 @@ func (m *BufferSettings) validate(all bool) error {
 	if len(errors) > 0 {
 		return BufferSettingsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -651,7 +626,6 @@ func (m *HttpService) validate(all bool) error {
 	if len(errors) > 0 {
 		return HttpServiceMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -813,7 +787,6 @@ func (m *AuthorizationRequest) validate(all bool) error {
 	if len(errors) > 0 {
 		return AuthorizationRequestMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1060,7 +1033,6 @@ func (m *AuthorizationResponse) validate(all bool) error {
 	if len(errors) > 0 {
 		return AuthorizationResponseMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1159,20 +1131,9 @@ func (m *ExtAuthzPerRoute) validate(all bool) error {
 
 	var errors []error
 
-	oneofOverridePresent := false
-	switch v := m.Override.(type) {
+	switch m.Override.(type) {
+
 	case *ExtAuthzPerRoute_Disabled:
-		if v == nil {
-			err := ExtAuthzPerRouteValidationError{
-				field:  "Override",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofOverridePresent = true
 
 		if m.GetDisabled() != true {
 			err := ExtAuthzPerRouteValidationError{
@@ -1186,17 +1147,6 @@ func (m *ExtAuthzPerRoute) validate(all bool) error {
 		}
 
 	case *ExtAuthzPerRoute_CheckSettings:
-		if v == nil {
-			err := ExtAuthzPerRouteValidationError{
-				field:  "Override",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofOverridePresent = true
 
 		if m.GetCheckSettings() == nil {
 			err := ExtAuthzPerRouteValidationError{
@@ -1239,9 +1189,6 @@ func (m *ExtAuthzPerRoute) validate(all bool) error {
 		}
 
 	default:
-		_ = v // ensures v is used
-	}
-	if !oneofOverridePresent {
 		err := ExtAuthzPerRouteValidationError{
 			field:  "Override",
 			reason: "value is required",
@@ -1250,12 +1197,12 @@ func (m *ExtAuthzPerRoute) validate(all bool) error {
 			return err
 		}
 		errors = append(errors, err)
+
 	}
 
 	if len(errors) > 0 {
 		return ExtAuthzPerRouteMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1359,7 +1306,6 @@ func (m *CheckSettings) validate(all bool) error {
 	if len(errors) > 0 {
 		return CheckSettingsMultiError(errors)
 	}
-
 	return nil
 }
 

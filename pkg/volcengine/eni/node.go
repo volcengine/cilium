@@ -142,7 +142,7 @@ func (n *Node) CreateInterface(ctx context.Context, allocation *ipam.AllocationA
 	n.rLockAllFuncCalls(func() { rsc = *n.k8sObj })()
 
 	// Must allocate secondary ENI IPs as needed, up to ENI instance limit
-	toAllocate := min(allocation.MaxIPsToAllocate, limit.IPv4, maxENIIPCreate) // in first alloc no more than 10
+	toAllocate := utils.Min(utils.Min(allocation.MaxIPsToAllocate, limit.IPv4), maxENIIPCreate) // in first alloc no more than 10
 	// Validate whether request has already been fulfilled in the meantime
 	if toAllocate < 1 {
 		return 0, "", nil
@@ -319,7 +319,7 @@ func (n *Node) PrepareIPAllocation(scopedLog *logrus.Entry) (*ipam.AllocationAct
 		}).Debug("Considering ENI for allocation")
 
 		// limit
-		availableOnENI := max(limit.IPv4-len(e.PrivateIPSets), 0)
+		availableOnENI := utils.Max(limit.IPv4-len(e.PrivateIPSets), 0)
 		if availableOnENI < 1 {
 			continue
 		}
@@ -346,7 +346,7 @@ func (n *Node) PrepareIPAllocation(scopedLog *logrus.Entry) (*ipam.AllocationAct
 
 	a.InterfaceID = mostFreeOne.eniID
 	a.PoolID = ipamTypes.PoolID(mostFreeOne.subnet.ID)
-	a.AvailableForAllocation = min(mostFreeOne.subnet.AvailableAddresses, mostFreeOne.availableOneENI)
+	a.AvailableForAllocation = utils.Min(mostFreeOne.subnet.AvailableAddresses, mostFreeOne.availableOneENI)
 
 	a.EmptyInterfaceSlots = limit.Adapters - len(n.enis)
 	return a, nil
@@ -401,7 +401,7 @@ func (n *Node) PrepareIPRelease(excessIPs int, scopedLog *logrus.Entry) *ipam.Re
 			constant.LogFieldExcessIPs:      excessIPs,
 			constant.LogFieldFreeOnENICount: freeOnENICount,
 		}).Debug("ENI has unused IPs that can be released")
-		maxReleaseOnENI := min(freeOnENICount, excessIPs)
+		maxReleaseOnENI := utils.Min(freeOnENICount, excessIPs)
 
 		r.InterfaceID = key
 		r.PoolID = ipamTypes.PoolID(e.VPC.VPCID)

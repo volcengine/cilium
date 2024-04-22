@@ -4,14 +4,15 @@ name: Image CI Build
 on:
   pull_request:
     branches:
-      - "*volcengine"
+      - "1.14.2-volcengine"
   push:
     branches:
-      - "*volcengine"
+      - "1.14.2-volcengine"
 
 permissions:
   # To be able to access the repository with `actions/checkout`
   contents: read
+  packages: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.after }}
@@ -44,9 +45,9 @@ jobs:
       - name: Login to Volcengine CRBase for CI
         uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
         with:
-          registry: ${{ vars.IMAGE_REGISTRY }}
-          username: ${{ secrets.VOLCENGINE_CILIUM_USERNAME_CI }}
-          password: ${{ secrets.VOLCENGINE_CILIUM_PASSWORD_CI }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Getting image tag
         id: tag
@@ -114,8 +115,14 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ vars.IMAGE_REGISTRY }}/${{ vars.IMAGE_NAMESPACE }}/${{ matrix.name }}-ci:${{ github.sha }}
-            ${{ vars.IMAGE_REGISTRY }}/${{ vars.IMAGE_NAMESPACE }}/${{ matrix.name }}-ci:${{ github.sha }}
+            ghcr.io/volcengine/cilium/${{ matrix.name }}:1.14.2-volcengine
           target: debug
           build-args: |
             OPERATOR_VARIANT=${{ matrix.name }}
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+      
+      - name: Push Charts
+        run: |
+          helm package install/kubernetes/cilium --version 1.14.2-volcengine
+          helm push cilium-1.14.2-volcengine.tgz oci://ghcr.io/volcengine/cilium/chart

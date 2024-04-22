@@ -12,10 +12,13 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This action is deprecated. Describes one or more of your linked EC2-Classic
-// instances. This request only returns information about EC2-Classic instances
-// linked to a VPC through ClassicLink. You cannot use this request to return
-// information about other instances.
+// Describes one or more of your linked EC2-Classic instances. This request only
+// returns information about EC2-Classic instances linked to a VPC through
+// ClassicLink. You cannot use this request to return information about other
+// instances. We are retiring EC2-Classic. We recommend that you migrate from
+// EC2-Classic to a VPC. For more information, see Migrate from EC2-Classic to a
+// VPC (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/vpc-migrate.html) in
+// the Amazon Elastic Compute Cloud User Guide.
 func (c *Client) DescribeClassicLinkInstances(ctx context.Context, params *DescribeClassicLinkInstancesInput, optFns ...func(*Options)) (*DescribeClassicLinkInstancesOutput, error) {
 	if params == nil {
 		params = &DescribeClassicLinkInstancesInput{}
@@ -39,7 +42,7 @@ type DescribeClassicLinkInstancesInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
-	// The filters.
+	// One or more filters.
 	//   - group-id - The ID of a VPC security group that's associated with the
 	//   instance.
 	//   - instance-id - The ID of the instance.
@@ -49,10 +52,11 @@ type DescribeClassicLinkInstancesInput struct {
 	//   specify tag:Owner for the filter name and TeamA for the filter value.
 	//   - tag-key - The key of a tag assigned to the resource. Use this filter to find
 	//   all resources assigned a tag with a specific key, regardless of the tag value.
-	//   - vpc-id - The ID of the VPC to which the instance is linked.
+	//   - vpc-id - The ID of the VPC to which the instance is linked. vpc-id - The ID
+	//   of the VPC that the instance is linked to.
 	Filters []types.Filter
 
-	// The instance IDs. Must be instances linked to a VPC through ClassicLink.
+	// One or more instance IDs. Must be instances linked to a VPC through ClassicLink.
 	InstanceIds []string
 
 	// The maximum number of items to return for this request. To get the next page of
@@ -84,22 +88,12 @@ type DescribeClassicLinkInstancesOutput struct {
 }
 
 func (c *Client) addOperationDescribeClassicLinkInstancesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpDescribeClassicLinkInstances{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpDescribeClassicLinkInstances{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeClassicLinkInstances"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -120,22 +114,22 @@ func (c *Client) addOperationDescribeClassicLinkInstancesMiddlewares(stack *midd
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeClassicLinkInstances(options.Region), middleware.Before); err != nil {
@@ -151,9 +145,6 @@ func (c *Client) addOperationDescribeClassicLinkInstancesMiddlewares(stack *midd
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
-		return err
-	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -259,6 +250,7 @@ func newServiceMetadataMiddleware_opDescribeClassicLinkInstances(region string) 
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "DescribeClassicLinkInstances",
 	}
 }

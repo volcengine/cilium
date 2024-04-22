@@ -12,7 +12,7 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Describe details for Windows AMIs that are configured for Windows fast launch.
+// Describe details for Windows AMIs that are configured for faster launching.
 func (c *Client) DescribeFastLaunchImages(ctx context.Context, params *DescribeFastLaunchImagesInput, optFns ...func(*Options)) (*DescribeFastLaunchImagesOutput, error) {
 	if params == nil {
 		params = &DescribeFastLaunchImagesInput{}
@@ -38,11 +38,13 @@ type DescribeFastLaunchImagesInput struct {
 
 	// Use the following filters to streamline results.
 	//   - resource-type - The resource type for pre-provisioning.
+	//   - launch-template - The launch template that is associated with the
+	//   pre-provisioned Windows AMI.
 	//   - owner-id - The owner ID for the pre-provisioning resource.
 	//   - state - The current state of fast launching for the Windows AMI.
 	Filters []types.Filter
 
-	// Specify one or more Windows AMI image IDs for the request.
+	// Details for one or more Windows AMI image IDs.
 	ImageIds []string
 
 	// The maximum number of items to return for this request. To get the next page of
@@ -75,22 +77,12 @@ type DescribeFastLaunchImagesOutput struct {
 }
 
 func (c *Client) addOperationDescribeFastLaunchImagesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpDescribeFastLaunchImages{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpDescribeFastLaunchImages{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeFastLaunchImages"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -111,22 +103,22 @@ func (c *Client) addOperationDescribeFastLaunchImagesMiddlewares(stack *middlewa
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeFastLaunchImages(options.Region), middleware.Before); err != nil {
@@ -142,9 +134,6 @@ func (c *Client) addOperationDescribeFastLaunchImagesMiddlewares(stack *middlewa
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
-		return err
-	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -249,6 +238,7 @@ func newServiceMetadataMiddleware_opDescribeFastLaunchImages(region string) *aws
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "DescribeFastLaunchImages",
 	}
 }

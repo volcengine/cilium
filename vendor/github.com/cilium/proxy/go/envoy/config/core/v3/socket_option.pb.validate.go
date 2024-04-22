@@ -74,38 +74,15 @@ func (m *SocketOption) validate(all bool) error {
 		errors = append(errors, err)
 	}
 
-	oneofValuePresent := false
-	switch v := m.Value.(type) {
+	switch m.Value.(type) {
+
 	case *SocketOption_IntValue:
-		if v == nil {
-			err := SocketOptionValidationError{
-				field:  "Value",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofValuePresent = true
 		// no validation rules for IntValue
+
 	case *SocketOption_BufValue:
-		if v == nil {
-			err := SocketOptionValidationError{
-				field:  "Value",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofValuePresent = true
 		// no validation rules for BufValue
+
 	default:
-		_ = v // ensures v is used
-	}
-	if !oneofValuePresent {
 		err := SocketOptionValidationError{
 			field:  "Value",
 			reason: "value is required",
@@ -114,12 +91,12 @@ func (m *SocketOption) validate(all bool) error {
 			return err
 		}
 		errors = append(errors, err)
+
 	}
 
 	if len(errors) > 0 {
 		return SocketOptionMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -252,7 +229,6 @@ func (m *SocketOptionsOverride) validate(all bool) error {
 	if len(errors) > 0 {
 		return SocketOptionsOverrideMultiError(errors)
 	}
-
 	return nil
 }
 
