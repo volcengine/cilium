@@ -10,10 +10,10 @@ import (
 	"math"
 	"os"
 	"reflect"
-	"sync"
 
 	"github.com/cilium/ebpf/internal"
 	"github.com/cilium/ebpf/internal/sys"
+	"github.com/cilium/ebpf/internal/unix"
 )
 
 const btfMagic = 0xeB9F
@@ -46,11 +46,49 @@ type Spec struct {
 	// Includes all struct flavors and types with the same name.
 	namedTypes map[essentialName][]Type
 
-	// String table from ELF.
+	// String table from ELF, may be nil.
 	strings *stringTable
 
 	// Byte order of the ELF we decoded the spec from, may be nil.
 	byteOrder binary.ByteOrder
+}
+
+var btfHeaderLen = binary.Size(&btfHeader{})
+
+type btfHeader struct {
+	Magic   uint16
+	Version uint8
+	Flags   uint8
+	HdrLen  uint32
+
+	TypeOff   uint32
+	TypeLen   uint32
+	StringOff uint32
+	StringLen uint32
+}
+
+// typeStart returns the offset from the beginning of the .BTF section
+// to the start of its type entries.
+func (h *btfHeader) typeStart() int64 {
+	return int64(h.HdrLen + h.TypeOff)
+}
+
+// stringStart returns the offset from the beginning of the .BTF section
+// to the start of its string table.
+func (h *btfHeader) stringStart() int64 {
+	return int64(h.HdrLen + h.StringOff)
+}
+
+// newSpec creates a Spec containing only Void.
+func newSpec() *Spec {
+	return &Spec{
+		[]Type{(*Void)(nil)},
+		map[Type]TypeID{(*Void)(nil): 0},
+		0,
+		make(map[essentialName][]Type),
+		nil,
+		nil,
+	}
 }
 
 // LoadSpec opens file and calls LoadSpecFromReader on it.
@@ -201,6 +239,10 @@ func loadRawSpec(btf io.ReaderAt, bo binary.ByteOrder, base *Spec) (*Spec, error
 			return nil, fmt.Errorf("can't use split BTF as base")
 		}
 
+		if base.strings == nil {
+			return nil, fmt.Errorf("parse split BTF: base must be loaded from an ELF")
+		}
+
 		baseStrings = base.strings
 
 		firstTypeID, err = base.nextTypeID()
@@ -209,7 +251,12 @@ func loadRawSpec(btf io.ReaderAt, bo binary.ByteOrder, base *Spec) (*Spec, error
 		}
 	}
 
-	types, rawStrings, err := parseBTF(btf, bo, baseStrings, base)
+	rawTypes, rawStrings, err := parseBTF(btf, bo, baseStrings)
+	if err != nil {
+		return nil, err
+	}
+
+	types, err := inflateRawTypes(rawTypes, rawStrings, base)
 	if err != nil {
 		return nil, err
 	}
@@ -250,105 +297,35 @@ func indexTypes(types []Type, firstTypeID TypeID) (map[Type]TypeID, map[essentia
 	return typeIDs, typesByName
 }
 
-// LoadKernelSpec returns the current kernel's BTF information.
-//
-// Defaults to /sys/kernel/btf/vmlinux and falls back to scanning the file system
-// for vmlinux ELFs. Returns an error wrapping ErrNotSupported if BTF is not enabled.
-func LoadKernelSpec() (*Spec, error) {
-	spec, _, err := kernelSpec()
-	if err != nil {
-		return nil, err
-	}
-	return spec.Copy(), nil
-}
-
-var kernelBTF struct {
-	sync.RWMutex
-	spec *Spec
-	// True if the spec was read from an ELF instead of raw BTF in /sys.
-	fallback bool
-}
-
-// FlushKernelSpec removes any cached kernel type information.
-func FlushKernelSpec() {
-	kernelBTF.Lock()
-	defer kernelBTF.Unlock()
-
-	kernelBTF.spec, kernelBTF.fallback = nil, false
-}
-
-func kernelSpec() (*Spec, bool, error) {
-	kernelBTF.RLock()
-	spec, fallback := kernelBTF.spec, kernelBTF.fallback
-	kernelBTF.RUnlock()
-
-	if spec == nil {
-		kernelBTF.Lock()
-		defer kernelBTF.Unlock()
-
-		spec, fallback = kernelBTF.spec, kernelBTF.fallback
+// parseBTFHeader parses the header of the .BTF section.
+func parseBTFHeader(r io.Reader, bo binary.ByteOrder) (*btfHeader, error) {
+	var header btfHeader
+	if err := binary.Read(r, bo, &header); err != nil {
+		return nil, fmt.Errorf("can't read header: %v", err)
 	}
 
-	if spec != nil {
-		return spec, fallback, nil
+	if header.Magic != btfMagic {
+		return nil, fmt.Errorf("incorrect magic value %v", header.Magic)
 	}
 
-	spec, fallback, err := loadKernelSpec()
-	if err != nil {
-		return nil, false, err
+	if header.Version != 1 {
+		return nil, fmt.Errorf("unexpected version %v", header.Version)
 	}
 
-	kernelBTF.spec, kernelBTF.fallback = spec, fallback
-	return spec, fallback, nil
-}
-
-func loadKernelSpec() (_ *Spec, fallback bool, _ error) {
-	fh, err := os.Open("/sys/kernel/btf/vmlinux")
-	if err == nil {
-		defer fh.Close()
-
-		spec, err := loadRawSpec(fh, internal.NativeEndian, nil)
-		return spec, false, err
+	if header.Flags != 0 {
+		return nil, fmt.Errorf("unsupported flags %v", header.Flags)
 	}
 
-	file, err := findVMLinux()
-	if err != nil {
-		return nil, false, err
-	}
-	defer file.Close()
-
-	spec, err := LoadSpecFromReader(file)
-	return spec, true, err
-}
-
-// findVMLinux scans multiple well-known paths for vmlinux kernel images.
-func findVMLinux() (*os.File, error) {
-	release, err := internal.KernelRelease()
-	if err != nil {
-		return nil, err
+	remainder := int64(header.HdrLen) - int64(binary.Size(&header))
+	if remainder < 0 {
+		return nil, errors.New("header length shorter than btfHeader size")
 	}
 
-	// use same list of locations as libbpf
-	// https://github.com/libbpf/libbpf/blob/9a3a42608dbe3731256a5682a125ac1e23bced8f/src/btf.c#L3114-L3122
-	locations := []string{
-		"/boot/vmlinux-%s",
-		"/lib/modules/%s/vmlinux-%[1]s",
-		"/lib/modules/%s/build/vmlinux",
-		"/usr/lib/modules/%s/kernel/vmlinux",
-		"/usr/lib/debug/boot/vmlinux-%s",
-		"/usr/lib/debug/boot/vmlinux-%s.debug",
-		"/usr/lib/debug/lib/modules/%s/vmlinux",
+	if _, err := io.CopyN(internal.DiscardZeroes{}, r, remainder); err != nil {
+		return nil, fmt.Errorf("header padding: %v", err)
 	}
 
-	for _, loc := range locations {
-		file, err := os.Open(fmt.Sprintf(loc, release))
-		if errors.Is(err, os.ErrNotExist) {
-			continue
-		}
-		return file, err
-	}
-
-	return nil, fmt.Errorf("no BTF found for kernel version %s: %w", release, internal.ErrNotSupported)
+	return &header, nil
 }
 
 func guessRawBTFByteOrder(r io.ReaderAt) binary.ByteOrder {
@@ -368,7 +345,7 @@ func guessRawBTFByteOrder(r io.ReaderAt) binary.ByteOrder {
 
 // parseBTF reads a .BTF section into memory and parses it into a list of
 // raw types and a string table.
-func parseBTF(btf io.ReaderAt, bo binary.ByteOrder, baseStrings *stringTable, base *Spec) ([]Type, *stringTable, error) {
+func parseBTF(btf io.ReaderAt, bo binary.ByteOrder, baseStrings *stringTable) ([]rawType, *stringTable, error) {
 	buf := internal.NewBufferedSectionReader(btf, 0, math.MaxInt64)
 	header, err := parseBTFHeader(buf, bo)
 	if err != nil {
@@ -382,12 +359,12 @@ func parseBTF(btf io.ReaderAt, bo binary.ByteOrder, baseStrings *stringTable, ba
 	}
 
 	buf.Reset(io.NewSectionReader(btf, header.typeStart(), int64(header.TypeLen)))
-	types, err := readAndInflateTypes(buf, bo, header.TypeLen, rawStrings, base)
+	rawTypes, err := readTypes(buf, bo, header.TypeLen)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("can't read types: %w", err)
 	}
 
-	return types, rawStrings, nil
+	return rawTypes, rawStrings, nil
 }
 
 type symbol struct {
@@ -693,4 +670,98 @@ func (iter *TypesIterator) Next() bool {
 	iter.Type = iter.types[iter.index]
 	iter.index++
 	return true
+}
+
+// haveBTF attempts to load a BTF blob containing an Int. It should pass on any
+// kernel that supports BPF_BTF_LOAD.
+var haveBTF = internal.NewFeatureTest("BTF", "4.18", func() error {
+	// 0-length anonymous integer
+	err := probeBTF(&Int{})
+	if errors.Is(err, unix.EINVAL) || errors.Is(err, unix.EPERM) {
+		return internal.ErrNotSupported
+	}
+	return err
+})
+
+// haveMapBTF attempts to load a minimal BTF blob containing a Var. It is
+// used as a proxy for .bss, .data and .rodata map support, which generally
+// come with a Var and Datasec. These were introduced in Linux 5.2.
+var haveMapBTF = internal.NewFeatureTest("Map BTF (Var/Datasec)", "5.2", func() error {
+	if err := haveBTF(); err != nil {
+		return err
+	}
+
+	v := &Var{
+		Name: "a",
+		Type: &Pointer{(*Void)(nil)},
+	}
+
+	err := probeBTF(v)
+	if errors.Is(err, unix.EINVAL) || errors.Is(err, unix.EPERM) {
+		// Treat both EINVAL and EPERM as not supported: creating the map may still
+		// succeed without Btf* attrs.
+		return internal.ErrNotSupported
+	}
+	return err
+})
+
+// haveProgBTF attempts to load a BTF blob containing a Func and FuncProto. It
+// is used as a proxy for ext_info (func_info) support, which depends on
+// Func(Proto) by definition.
+var haveProgBTF = internal.NewFeatureTest("Program BTF (func/line_info)", "5.0", func() error {
+	if err := haveBTF(); err != nil {
+		return err
+	}
+
+	fn := &Func{
+		Name: "a",
+		Type: &FuncProto{Return: (*Void)(nil)},
+	}
+
+	err := probeBTF(fn)
+	if errors.Is(err, unix.EINVAL) || errors.Is(err, unix.EPERM) {
+		return internal.ErrNotSupported
+	}
+	return err
+})
+
+var haveFuncLinkage = internal.NewFeatureTest("BTF func linkage", "5.6", func() error {
+	if err := haveProgBTF(); err != nil {
+		return err
+	}
+
+	fn := &Func{
+		Name:    "a",
+		Type:    &FuncProto{Return: (*Void)(nil)},
+		Linkage: GlobalFunc,
+	}
+
+	err := probeBTF(fn)
+	if errors.Is(err, unix.EINVAL) {
+		return internal.ErrNotSupported
+	}
+	return err
+})
+
+func probeBTF(typ Type) error {
+	b, err := NewBuilder([]Type{typ})
+	if err != nil {
+		return err
+	}
+
+	buf, err := b.Marshal(nil, nil)
+	if err != nil {
+		return err
+	}
+
+	fd, err := sys.BtfLoad(&sys.BtfLoadAttr{
+		Btf:     sys.NewSlicePointer(buf),
+		BtfSize: uint32(len(buf)),
+	})
+
+	if err == nil {
+		fd.Close()
+	}
+
+	return err
 }

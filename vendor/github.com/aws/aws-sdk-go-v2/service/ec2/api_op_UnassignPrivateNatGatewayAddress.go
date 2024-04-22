@@ -4,7 +4,6 @@ package ec2
 
 import (
 	"context"
-	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -15,14 +14,14 @@ import (
 // Unassigns secondary private IPv4 addresses from a private NAT gateway. You
 // cannot unassign your primary private IP. For more information, see Edit
 // secondary IP address associations (https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html#nat-gateway-edit-secondary)
-// in the Amazon VPC User Guide. While unassigning is in progress, you cannot
-// assign/unassign additional IP addresses while the connections are being drained.
-// You are, however, allowed to delete the NAT gateway. A private IP address will
-// only be released at the end of MaxDrainDurationSeconds. The private IP addresses
-// stay associated and support the existing connections, but do not support any new
-// connections (new connections are distributed across the remaining assigned
-// private IP address). After the existing connections drain out, the private IP
-// addresses are released.
+// in the Amazon Virtual Private Cloud User Guide. While unassigning is in
+// progress, you cannot assign/unassign additional IP addresses while the
+// connections are being drained. You are, however, allowed to delete the NAT
+// gateway. A private IP address will only be released at the end of
+// MaxDrainDurationSeconds. The private IP addresses stay associated and support
+// the existing connections but do not support any new connections (new connections
+// are distributed across the remaining assigned private IP address). After the
+// existing connections drain out, the private IP addresses get released.
 func (c *Client) UnassignPrivateNatGatewayAddress(ctx context.Context, params *UnassignPrivateNatGatewayAddressInput, optFns ...func(*Options)) (*UnassignPrivateNatGatewayAddressOutput, error) {
 	if params == nil {
 		params = &UnassignPrivateNatGatewayAddressInput{}
@@ -40,7 +39,7 @@ func (c *Client) UnassignPrivateNatGatewayAddress(ctx context.Context, params *U
 
 type UnassignPrivateNatGatewayAddressInput struct {
 
-	// The ID of the NAT gateway.
+	// The NAT gateway ID.
 	//
 	// This member is required.
 	NatGatewayId *string
@@ -68,7 +67,7 @@ type UnassignPrivateNatGatewayAddressOutput struct {
 	// Information about the NAT gateway IP addresses.
 	NatGatewayAddresses []types.NatGatewayAddress
 
-	// The ID of the NAT gateway.
+	// The NAT gateway ID.
 	NatGatewayId *string
 
 	// Metadata pertaining to the operation's result.
@@ -78,22 +77,12 @@ type UnassignPrivateNatGatewayAddressOutput struct {
 }
 
 func (c *Client) addOperationUnassignPrivateNatGatewayAddressMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpUnassignPrivateNatGatewayAddress{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpUnassignPrivateNatGatewayAddress{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "UnassignPrivateNatGatewayAddress"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -114,22 +103,22 @@ func (c *Client) addOperationUnassignPrivateNatGatewayAddressMiddlewares(stack *
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addOpUnassignPrivateNatGatewayAddressValidationMiddleware(stack); err != nil {
@@ -150,9 +139,6 @@ func (c *Client) addOperationUnassignPrivateNatGatewayAddressMiddlewares(stack *
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -160,6 +146,7 @@ func newServiceMetadataMiddleware_opUnassignPrivateNatGatewayAddress(region stri
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "UnassignPrivateNatGatewayAddress",
 	}
 }

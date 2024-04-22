@@ -144,7 +144,6 @@ func (m *ConnectionLimit) validate(all bool) error {
 	if len(errors) > 0 {
 		return ConnectionLimitMultiError(errors)
 	}
-
 	return nil
 }
 

@@ -86,7 +86,6 @@ func (m *TypedExtensionConfig) validate(all bool) error {
 	if len(errors) > 0 {
 		return TypedExtensionConfigMultiError(errors)
 	}
-
 	return nil
 }
 

@@ -64,7 +64,6 @@ func (m *Int64Range) validate(all bool) error {
 	if len(errors) > 0 {
 		return Int64RangeMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -167,7 +166,6 @@ func (m *Int32Range) validate(all bool) error {
 	if len(errors) > 0 {
 		return Int32RangeMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -270,7 +268,6 @@ func (m *DoubleRange) validate(all bool) error {
 	if len(errors) > 0 {
 		return DoubleRangeMultiError(errors)
 	}
-
 	return nil
 }
 

@@ -18,10 +18,7 @@ import (
 	"time"
 )
 
-// Describes one or more of your network interfaces. If you have a large number of
-// network interfaces, the operation fails unless you use pagination or one of the
-// following filters: group-id , mac-address , private-dns-name ,
-// private-ip-address , private-dns-name , subnet-id , or vpc-id .
+// Describes one or more of your network interfaces.
 func (c *Client) DescribeNetworkInterfaces(ctx context.Context, params *DescribeNetworkInterfacesInput, optFns ...func(*Options)) (*DescribeNetworkInterfacesOutput, error) {
 	if params == nil {
 		params = &DescribeNetworkInterfacesInput{}
@@ -47,27 +44,27 @@ type DescribeNetworkInterfacesInput struct {
 	DryRun *bool
 
 	// One or more filters.
-	//   - association.allocation-id - The allocation ID returned when you allocated
-	//   the Elastic IP address (IPv4) for your network interface.
-	//   - association.association-id - The association ID returned when the network
-	//   interface was associated with an IPv4 address.
-	//   - addresses.association.owner-id - The owner ID of the addresses associated
-	//   with the network interface.
-	//   - addresses.association.public-ip - The association ID returned when the
-	//   network interface was associated with the Elastic IP address (IPv4).
-	//   - addresses.primary - Whether the private IPv4 address is the primary IP
-	//   address associated with the network interface.
 	//   - addresses.private-ip-address - The private IPv4 addresses associated with
 	//   the network interface.
+	//   - addresses.primary - Whether the private IPv4 address is the primary IP
+	//   address associated with the network interface.
+	//   - addresses.association.public-ip - The association ID returned when the
+	//   network interface was associated with the Elastic IP address (IPv4).
+	//   - addresses.association.owner-id - The owner ID of the addresses associated
+	//   with the network interface.
+	//   - association.association-id - The association ID returned when the network
+	//   interface was associated with an IPv4 address.
+	//   - association.allocation-id - The allocation ID returned when you allocated
+	//   the Elastic IP address (IPv4) for your network interface.
 	//   - association.ip-owner-id - The owner of the Elastic IP address (IPv4)
 	//   associated with the network interface.
 	//   - association.public-ip - The address of the Elastic IP address (IPv4) bound
 	//   to the network interface.
 	//   - association.public-dns-name - The public DNS name for the network interface
 	//   (IPv4).
+	//   - attachment.attachment-id - The ID of the interface attachment.
 	//   - attachment.attach-time - The time that the network interface was attached to
 	//   an instance.
-	//   - attachment.attachment-id - The ID of the interface attachment.
 	//   - attachment.delete-on-termination - Indicates whether the attachment is
 	//   deleted when an instance is terminated.
 	//   - attachment.device-index - The device index to which the network interface is
@@ -81,21 +78,22 @@ type DescribeNetworkInterfacesInput struct {
 	//   - availability-zone - The Availability Zone of the network interface.
 	//   - description - The description of the network interface.
 	//   - group-id - The ID of a security group associated with the network interface.
+	//   - group-name - The name of a security group associated with the network
+	//   interface.
 	//   - ipv6-addresses.ipv6-address - An IPv6 address associated with the network
 	//   interface.
 	//   - interface-type - The type of network interface ( api_gateway_managed |
-	//   aws_codestar_connections_managed | branch | ec2_instance_connect_endpoint |
-	//   efa | efs | gateway_load_balancer | gateway_load_balancer_endpoint |
-	//   global_accelerator_managed | interface | iot_rules_managed | lambda |
-	//   load_balancer | nat_gateway | network_load_balancer | quicksight |
-	//   transit_gateway | trunk | vpc_endpoint ).
+	//   aws_codestar_connections_managed | branch | efa | gateway_load_balancer |
+	//   gateway_load_balancer_endpoint | global_accelerator_managed | interface |
+	//   iot_rules_managed | lambda | load_balancer | nat_gateway |
+	//   network_load_balancer | quicksight | transit_gateway | trunk | vpc_endpoint ).
 	//   - mac-address - The MAC address of the network interface.
 	//   - network-interface-id - The ID of the network interface.
 	//   - owner-id - The Amazon Web Services account ID of the network interface
 	//   owner.
-	//   - private-dns-name - The private DNS name of the network interface (IPv4).
 	//   - private-ip-address - The private IPv4 address or addresses of the network
 	//   interface.
+	//   - private-dns-name - The private DNS name of the network interface (IPv4).
 	//   - requester-id - The alias or Amazon Web Services account ID of the principal
 	//   or service that created the network interface.
 	//   - requester-managed - Indicates whether the network interface is being managed
@@ -151,22 +149,12 @@ type DescribeNetworkInterfacesOutput struct {
 }
 
 func (c *Client) addOperationDescribeNetworkInterfacesMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpDescribeNetworkInterfaces{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpDescribeNetworkInterfaces{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeNetworkInterfaces"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -187,22 +175,22 @@ func (c *Client) addOperationDescribeNetworkInterfacesMiddlewares(stack *middlew
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeNetworkInterfaces(options.Region), middleware.Before); err != nil {
@@ -218,9 +206,6 @@ func (c *Client) addOperationDescribeNetworkInterfacesMiddlewares(stack *middlew
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
-		return err
-	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -516,6 +501,7 @@ func newServiceMetadataMiddleware_opDescribeNetworkInterfaces(region string) *aw
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "DescribeNetworkInterfaces",
 	}
 }

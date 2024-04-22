@@ -60,7 +60,6 @@ func (m *UpstreamTlsWrapperContext) validate(all bool) error {
 	if len(errors) > 0 {
 		return UpstreamTlsWrapperContextMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -162,7 +161,6 @@ func (m *DownstreamTlsWrapperContext) validate(all bool) error {
 	if len(errors) > 0 {
 		return DownstreamTlsWrapperContextMultiError(errors)
 	}
-
 	return nil
 }
 

@@ -48,10 +48,6 @@ type Record struct {
 	// The number of samples which could not be output, since
 	// the ring buffer was full.
 	LostSamples uint64
-
-	// The minimum number of bytes remaining in the per-CPU buffer after this Record has been read.
-	// Negative for overwritable buffers.
-	Remaining int
 }
 
 // Read a record from a reader and tag it as being from the given CPU.
@@ -162,8 +158,6 @@ type Reader struct {
 
 	paused       bool
 	overwritable bool
-
-	bufferSize int
 }
 
 // ReaderOptions control the behaviour of the user
@@ -222,7 +216,6 @@ func NewReaderWithOptions(array *ebpf.Map, perCPUBuffer int, opts ReaderOptions)
 	// bpf_perf_event_output checks which CPU an event is enabled on,
 	// but doesn't allow using a wildcard like -1 to specify "all CPUs".
 	// Hence we have to create a ring for each CPU.
-	bufferSize := 0
 	for i := 0; i < nCPU; i++ {
 		ring, err := newPerfEventRing(i, perCPUBuffer, opts.Watermark, opts.Overwritable)
 		if errors.Is(err, unix.ENODEV) {
@@ -231,7 +224,6 @@ func NewReaderWithOptions(array *ebpf.Map, perCPUBuffer int, opts ReaderOptions)
 			pauseFds = append(pauseFds, -1)
 			continue
 		}
-		bufferSize = ring.size()
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to create perf ring for CPU %d: %v", i, err)
@@ -259,7 +251,6 @@ func NewReaderWithOptions(array *ebpf.Map, perCPUBuffer int, opts ReaderOptions)
 		eventHeader:  make([]byte, perfEventHeaderSize),
 		pauseFds:     pauseFds,
 		overwritable: opts.Overwritable,
-		bufferSize:   bufferSize,
 	}
 	if err = pr.Resume(); err != nil {
 		return nil, err
@@ -439,11 +430,6 @@ func (pr *Reader) Resume() error {
 	return nil
 }
 
-// BufferSize is the size in bytes of each per-CPU buffer
-func (pr *Reader) BufferSize() int {
-	return pr.bufferSize
-}
-
 // NB: Has to be preceded by a call to ring.loadHead.
 func (pr *Reader) readRecordFromRing(rec *Record, ring *perfEventRing) error {
 	defer ring.writeTail()
@@ -453,7 +439,6 @@ func (pr *Reader) readRecordFromRing(rec *Record, ring *perfEventRing) error {
 	if pr.overwritable && (errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)) {
 		return errEOR
 	}
-	rec.Remaining = ring.remaining()
 	return err
 }
 

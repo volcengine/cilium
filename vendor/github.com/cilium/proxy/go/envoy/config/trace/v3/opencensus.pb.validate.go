@@ -163,7 +163,6 @@ func (m *OpenCensusConfig) validate(all bool) error {
 	if len(errors) > 0 {
 		return OpenCensusConfigMultiError(errors)
 	}
-
 	return nil
 }
 

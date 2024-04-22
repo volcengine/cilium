@@ -92,7 +92,6 @@ type CreateAutoProvisioningGroupRequest struct {
 	ValidUntil                                     string                                                            `position:"Query" name:"ValidUntil"`
 	LaunchTemplateId                               string                                                            `position:"Query" name:"LaunchTemplateId"`
 	OwnerId                                        requests.Integer                                                  `position:"Query" name:"OwnerId"`
-	LaunchConfigurationImageFamily                 string                                                            `position:"Query" name:"LaunchConfiguration.ImageFamily"`
 	LaunchConfigurationSystemDiskSize              requests.Integer                                                  `position:"Query" name:"LaunchConfiguration.SystemDiskSize"`
 	LaunchConfigurationInternetMaxBandwidthOut     requests.Integer                                                  `position:"Query" name:"LaunchConfiguration.InternetMaxBandwidthOut"`
 	LaunchConfigurationHostName                    string                                                            `position:"Query" name:"LaunchConfiguration.HostName"`

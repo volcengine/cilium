@@ -59,33 +59,12 @@ func (m *StringMatcher) validate(all bool) error {
 
 	// no validation rules for IgnoreCase
 
-	oneofMatchPatternPresent := false
-	switch v := m.MatchPattern.(type) {
+	switch m.MatchPattern.(type) {
+
 	case *StringMatcher_Exact:
-		if v == nil {
-			err := StringMatcherValidationError{
-				field:  "MatchPattern",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofMatchPatternPresent = true
 		// no validation rules for Exact
+
 	case *StringMatcher_Prefix:
-		if v == nil {
-			err := StringMatcherValidationError{
-				field:  "MatchPattern",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofMatchPatternPresent = true
 
 		if utf8.RuneCountInString(m.GetPrefix()) < 1 {
 			err := StringMatcherValidationError{
@@ -99,17 +78,6 @@ func (m *StringMatcher) validate(all bool) error {
 		}
 
 	case *StringMatcher_Suffix:
-		if v == nil {
-			err := StringMatcherValidationError{
-				field:  "MatchPattern",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofMatchPatternPresent = true
 
 		if utf8.RuneCountInString(m.GetSuffix()) < 1 {
 			err := StringMatcherValidationError{
@@ -123,17 +91,6 @@ func (m *StringMatcher) validate(all bool) error {
 		}
 
 	case *StringMatcher_SafeRegex:
-		if v == nil {
-			err := StringMatcherValidationError{
-				field:  "MatchPattern",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofMatchPatternPresent = true
 
 		if m.GetSafeRegex() == nil {
 			err := StringMatcherValidationError{
@@ -176,17 +133,6 @@ func (m *StringMatcher) validate(all bool) error {
 		}
 
 	case *StringMatcher_Contains:
-		if v == nil {
-			err := StringMatcherValidationError{
-				field:  "MatchPattern",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofMatchPatternPresent = true
 
 		if utf8.RuneCountInString(m.GetContains()) < 1 {
 			err := StringMatcherValidationError{
@@ -200,9 +146,6 @@ func (m *StringMatcher) validate(all bool) error {
 		}
 
 	default:
-		_ = v // ensures v is used
-	}
-	if !oneofMatchPatternPresent {
 		err := StringMatcherValidationError{
 			field:  "MatchPattern",
 			reason: "value is required",
@@ -211,12 +154,12 @@ func (m *StringMatcher) validate(all bool) error {
 			return err
 		}
 		errors = append(errors, err)
+
 	}
 
 	if len(errors) > 0 {
 		return StringMatcherMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -361,7 +304,6 @@ func (m *ListStringMatcher) validate(all bool) error {
 	if len(errors) > 0 {
 		return ListStringMatcherMultiError(errors)
 	}
-
 	return nil
 }
 

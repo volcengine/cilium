@@ -88,7 +88,6 @@ func (m *Tracing) validate(all bool) error {
 	if len(errors) > 0 {
 		return TracingMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -195,18 +194,9 @@ func (m *Tracing_Http) validate(all bool) error {
 		errors = append(errors, err)
 	}
 
-	switch v := m.ConfigType.(type) {
+	switch m.ConfigType.(type) {
+
 	case *Tracing_Http_TypedConfig:
-		if v == nil {
-			err := Tracing_HttpValidationError{
-				field:  "ConfigType",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetTypedConfig()).(type) {
@@ -237,14 +227,11 @@ func (m *Tracing_Http) validate(all bool) error {
 			}
 		}
 
-	default:
-		_ = v // ensures v is used
 	}
 
 	if len(errors) > 0 {
 		return Tracing_HttpMultiError(errors)
 	}
-
 	return nil
 }
 

@@ -14,8 +14,6 @@ const gcENIControllerName = "ipam-eni-gc"
 
 var (
 	controllerManager = controller.NewManager()
-
-	gcENIControllerGroup = controller.NewGroup(gcENIControllerName)
 )
 
 type GarbageCollectionParams struct {
@@ -34,7 +32,6 @@ func StartENIGarbageCollector(ctx context.Context, api api.VolcengineAPI, params
 
 	var enisMarkedForDeletion []string
 	controllerManager.UpdateController(gcENIControllerName, controller.ControllerParams{
-		Group: gcENIControllerGroup,
 		DoFunc: func(ctx context.Context) error {
 			var err error
 			enisMarkedForDeletion, err = api.GetDetachedNetworkInterfaces(ctx, params.ENITags, params.RunInterval)

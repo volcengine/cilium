@@ -68,20 +68,9 @@ func (m *FilterStateMatcher) validate(all bool) error {
 		errors = append(errors, err)
 	}
 
-	oneofMatcherPresent := false
-	switch v := m.Matcher.(type) {
+	switch m.Matcher.(type) {
+
 	case *FilterStateMatcher_StringMatch:
-		if v == nil {
-			err := FilterStateMatcherValidationError{
-				field:  "Matcher",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofMatcherPresent = true
 
 		if all {
 			switch v := interface{}(m.GetStringMatch()).(type) {
@@ -113,9 +102,6 @@ func (m *FilterStateMatcher) validate(all bool) error {
 		}
 
 	default:
-		_ = v // ensures v is used
-	}
-	if !oneofMatcherPresent {
 		err := FilterStateMatcherValidationError{
 			field:  "Matcher",
 			reason: "value is required",
@@ -124,12 +110,12 @@ func (m *FilterStateMatcher) validate(all bool) error {
 			return err
 		}
 		errors = append(errors, err)
+
 	}
 
 	if len(errors) > 0 {
 		return FilterStateMatcherMultiError(errors)
 	}
-
 	return nil
 }
 

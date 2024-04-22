@@ -31,6 +31,5 @@ type InstanceInDescribeManagedInstances struct {
 	OsVersion        string `json:"OsVersion" xml:"OsVersion"`
 	InvocationCount  int64  `json:"InvocationCount" xml:"InvocationCount"`
 	MachineId        string `json:"MachineId" xml:"MachineId"`
-	ResourceGroupId  string `json:"ResourceGroupId" xml:"ResourceGroupId"`
 	Tags             []Tag  `json:"Tags" xml:"Tags"`
 }

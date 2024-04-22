@@ -4,19 +4,22 @@ package ec2
 
 import (
 	"context"
-	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// This action is deprecated. Enables a VPC for ClassicLink. You can then link
-// EC2-Classic instances to your ClassicLink-enabled VPC to allow communication
-// over private IP addresses. You cannot enable your VPC for ClassicLink if any of
-// your VPC route tables have existing routes for address ranges within the
-// 10.0.0.0/8 IP address range, excluding local routes for VPCs in the 10.0.0.0/16
-// and 10.1.0.0/16 IP address ranges.
+// We are retiring EC2-Classic. We recommend that you migrate from EC2-Classic to
+// a VPC. For more information, see Migrate from EC2-Classic to a VPC (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/vpc-migrate.html)
+// in the Amazon Elastic Compute Cloud User Guide. Enables a VPC for ClassicLink.
+// You can then link EC2-Classic instances to your ClassicLink-enabled VPC to allow
+// communication over private IP addresses. You cannot enable your VPC for
+// ClassicLink if any of your VPC route tables have existing routes for address
+// ranges within the 10.0.0.0/8 IP address range, excluding local routes for VPCs
+// in the 10.0.0.0/16 and 10.1.0.0/16 IP address ranges. For more information, see
+// ClassicLink (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/vpc-classiclink.html)
+// in the Amazon Elastic Compute Cloud User Guide.
 func (c *Client) EnableVpcClassicLink(ctx context.Context, params *EnableVpcClassicLinkInput, optFns ...func(*Options)) (*EnableVpcClassicLinkOutput, error) {
 	if params == nil {
 		params = &EnableVpcClassicLinkInput{}
@@ -60,22 +63,12 @@ type EnableVpcClassicLinkOutput struct {
 }
 
 func (c *Client) addOperationEnableVpcClassicLinkMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpEnableVpcClassicLink{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpEnableVpcClassicLink{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "EnableVpcClassicLink"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -96,22 +89,22 @@ func (c *Client) addOperationEnableVpcClassicLinkMiddlewares(stack *middleware.S
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addOpEnableVpcClassicLinkValidationMiddleware(stack); err != nil {
@@ -132,9 +125,6 @@ func (c *Client) addOperationEnableVpcClassicLinkMiddlewares(stack *middleware.S
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -142,6 +132,7 @@ func newServiceMetadataMiddleware_opEnableVpcClassicLink(region string) *awsmidd
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "EnableVpcClassicLink",
 	}
 }

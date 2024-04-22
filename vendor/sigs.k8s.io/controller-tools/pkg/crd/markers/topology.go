@@ -101,7 +101,7 @@ type StructType string
 
 func (l ListType) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
 	if schema.Type != "array" {
-		return fmt.Errorf("must apply listType to an array, found %s", schema.Type)
+		return fmt.Errorf("must apply listType to an array")
 	}
 	if l != "map" && l != "atomic" && l != "set" {
 		return fmt.Errorf(`ListType must be either "map", "set" or "atomic"`)
@@ -115,7 +115,7 @@ func (l ListType) ApplyFirst() {}
 
 func (l ListMapKey) ApplyToSchema(schema *apiext.JSONSchemaProps) error {
 	if schema.Type != "array" {
-		return fmt.Errorf("must apply listMapKey to an array, found %s", schema.Type)
+		return fmt.Errorf("must apply listMapKey to an array")
 	}
 	if schema.XListType == nil || *schema.XListType != "map" {
 		return fmt.Errorf("must apply listMapKey to an associative-list")

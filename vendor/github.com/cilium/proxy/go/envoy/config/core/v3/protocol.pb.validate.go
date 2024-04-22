@@ -60,7 +60,6 @@ func (m *TcpProtocolOptions) validate(all bool) error {
 	if len(errors) > 0 {
 		return TcpProtocolOptionsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -224,7 +223,6 @@ func (m *QuicKeepAliveSettings) validate(all bool) error {
 	if len(errors) > 0 {
 		return QuicKeepAliveSettingsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -415,7 +413,6 @@ func (m *QuicProtocolOptions) validate(all bool) error {
 	if len(errors) > 0 {
 		return QuicProtocolOptionsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -536,7 +533,6 @@ func (m *UpstreamHttpProtocolOptions) validate(all bool) error {
 	if len(errors) > 0 {
 		return UpstreamHttpProtocolOptionsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -730,7 +726,6 @@ func (m *AlternateProtocolsCacheOptions) validate(all bool) error {
 	if len(errors) > 0 {
 		return AlternateProtocolsCacheOptionsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -966,7 +961,6 @@ func (m *HttpProtocolOptions) validate(all bool) error {
 	if len(errors) > 0 {
 		return HttpProtocolOptionsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1162,41 +1156,9 @@ func (m *Http1ProtocolOptions) validate(all bool) error {
 
 	// no validation rules for SendFullyQualifiedUrl
 
-	if all {
-		switch v := interface{}(m.GetUseBalsaParser()).(type) {
-		case interface{ ValidateAll() error }:
-			if err := v.ValidateAll(); err != nil {
-				errors = append(errors, Http1ProtocolOptionsValidationError{
-					field:  "UseBalsaParser",
-					reason: "embedded message failed validation",
-					cause:  err,
-				})
-			}
-		case interface{ Validate() error }:
-			if err := v.Validate(); err != nil {
-				errors = append(errors, Http1ProtocolOptionsValidationError{
-					field:  "UseBalsaParser",
-					reason: "embedded message failed validation",
-					cause:  err,
-				})
-			}
-		}
-	} else if v, ok := interface{}(m.GetUseBalsaParser()).(interface{ Validate() error }); ok {
-		if err := v.Validate(); err != nil {
-			return Http1ProtocolOptionsValidationError{
-				field:  "UseBalsaParser",
-				reason: "embedded message failed validation",
-				cause:  err,
-			}
-		}
-	}
-
-	// no validation rules for AllowCustomMethods
-
 	if len(errors) > 0 {
 		return Http1ProtocolOptionsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1428,7 +1390,6 @@ func (m *KeepaliveSettings) validate(all bool) error {
 	if len(errors) > 0 {
 		return KeepaliveSettingsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1802,39 +1763,9 @@ func (m *Http2ProtocolOptions) validate(all bool) error {
 		}
 	}
 
-	if all {
-		switch v := interface{}(m.GetUseOghttp2Codec()).(type) {
-		case interface{ ValidateAll() error }:
-			if err := v.ValidateAll(); err != nil {
-				errors = append(errors, Http2ProtocolOptionsValidationError{
-					field:  "UseOghttp2Codec",
-					reason: "embedded message failed validation",
-					cause:  err,
-				})
-			}
-		case interface{ Validate() error }:
-			if err := v.Validate(); err != nil {
-				errors = append(errors, Http2ProtocolOptionsValidationError{
-					field:  "UseOghttp2Codec",
-					reason: "embedded message failed validation",
-					cause:  err,
-				})
-			}
-		}
-	} else if v, ok := interface{}(m.GetUseOghttp2Codec()).(interface{ Validate() error }); ok {
-		if err := v.Validate(); err != nil {
-			return Http2ProtocolOptionsValidationError{
-				field:  "UseOghttp2Codec",
-				reason: "embedded message failed validation",
-				cause:  err,
-			}
-		}
-	}
-
 	if len(errors) > 0 {
 		return Http2ProtocolOptionsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -1965,7 +1896,6 @@ func (m *GrpcProtocolOptions) validate(all bool) error {
 	if len(errors) > 0 {
 		return GrpcProtocolOptionsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -2127,7 +2057,6 @@ func (m *Http3ProtocolOptions) validate(all bool) error {
 	if len(errors) > 0 {
 		return Http3ProtocolOptionsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -2226,18 +2155,9 @@ func (m *SchemeHeaderTransformation) validate(all bool) error {
 
 	var errors []error
 
-	switch v := m.Transformation.(type) {
+	switch m.Transformation.(type) {
+
 	case *SchemeHeaderTransformation_SchemeToOverwrite:
-		if v == nil {
-			err := SchemeHeaderTransformationValidationError{
-				field:  "Transformation",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if _, ok := _SchemeHeaderTransformation_SchemeToOverwrite_InLookup[m.GetSchemeToOverwrite()]; !ok {
 			err := SchemeHeaderTransformationValidationError{
@@ -2250,14 +2170,11 @@ func (m *SchemeHeaderTransformation) validate(all bool) error {
 			errors = append(errors, err)
 		}
 
-	default:
-		_ = v // ensures v is used
 	}
 
 	if len(errors) > 0 {
 		return SchemeHeaderTransformationMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -2393,7 +2310,6 @@ func (m *AlternateProtocolsCacheOptions_AlternateProtocolsCacheEntry) validate(a
 	if len(errors) > 0 {
 		return AlternateProtocolsCacheOptions_AlternateProtocolsCacheEntryMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -2508,20 +2424,9 @@ func (m *Http1ProtocolOptions_HeaderKeyFormat) validate(all bool) error {
 
 	var errors []error
 
-	oneofHeaderFormatPresent := false
-	switch v := m.HeaderFormat.(type) {
+	switch m.HeaderFormat.(type) {
+
 	case *Http1ProtocolOptions_HeaderKeyFormat_ProperCaseWords_:
-		if v == nil {
-			err := Http1ProtocolOptions_HeaderKeyFormatValidationError{
-				field:  "HeaderFormat",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofHeaderFormatPresent = true
 
 		if all {
 			switch v := interface{}(m.GetProperCaseWords()).(type) {
@@ -2553,17 +2458,6 @@ func (m *Http1ProtocolOptions_HeaderKeyFormat) validate(all bool) error {
 		}
 
 	case *Http1ProtocolOptions_HeaderKeyFormat_StatefulFormatter:
-		if v == nil {
-			err := Http1ProtocolOptions_HeaderKeyFormatValidationError{
-				field:  "HeaderFormat",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
-		oneofHeaderFormatPresent = true
 
 		if all {
 			switch v := interface{}(m.GetStatefulFormatter()).(type) {
@@ -2595,9 +2489,6 @@ func (m *Http1ProtocolOptions_HeaderKeyFormat) validate(all bool) error {
 		}
 
 	default:
-		_ = v // ensures v is used
-	}
-	if !oneofHeaderFormatPresent {
 		err := Http1ProtocolOptions_HeaderKeyFormatValidationError{
 			field:  "HeaderFormat",
 			reason: "value is required",
@@ -2606,12 +2497,12 @@ func (m *Http1ProtocolOptions_HeaderKeyFormat) validate(all bool) error {
 			return err
 		}
 		errors = append(errors, err)
+
 	}
 
 	if len(errors) > 0 {
 		return Http1ProtocolOptions_HeaderKeyFormatMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -2718,7 +2609,6 @@ func (m *Http1ProtocolOptions_HeaderKeyFormat_ProperCaseWords) validate(all bool
 	if len(errors) > 0 {
 		return Http1ProtocolOptions_HeaderKeyFormat_ProperCaseWordsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -2895,7 +2785,6 @@ func (m *Http2ProtocolOptions_SettingsParameter) validate(all bool) error {
 	if len(errors) > 0 {
 		return Http2ProtocolOptions_SettingsParameterMultiError(errors)
 	}
-
 	return nil
 }
 

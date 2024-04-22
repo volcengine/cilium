@@ -5,7 +5,8 @@ package limits
 
 import (
 	"context"
-	"maps"
+
+	"golang.org/x/exp/maps"
 
 	ipamTypes "github.com/cilium/cilium/pkg/ipam/types"
 	"github.com/cilium/cilium/pkg/lock"

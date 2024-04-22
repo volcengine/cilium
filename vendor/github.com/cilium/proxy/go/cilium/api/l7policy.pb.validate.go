@@ -64,7 +64,6 @@ func (m *L7Policy) validate(all bool) error {
 	if len(errors) > 0 {
 		return L7PolicyMultiError(errors)
 	}
-
 	return nil
 }
 

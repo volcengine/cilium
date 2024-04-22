@@ -12,7 +12,7 @@ package main
 import (
 	"github.com/spf13/pflag"
 	"k8s.io/gengo/args"
-	"k8s.io/klog/v2"
+	"k8s.io/klog"
 
 	"github.com/cilium/deepequal-gen/generators"
 )

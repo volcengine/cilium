@@ -6,40 +6,31 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
 	operatorOption "github.com/cilium/cilium/operator/option"
 	"github.com/cilium/cilium/pkg/defaults"
 	"github.com/cilium/cilium/pkg/option"
 )
 
 func init() {
-	FlagsHooks = append(FlagsHooks, new(volcengineFlagsHooks))
-}
-
-type volcengineFlagsHooks struct{}
-
-func (h *volcengineFlagsHooks) RegisterProviderFlag(cmd *cobra.Command, vp *viper.Viper) {
-	flags := cmd.Flags()
+	flags := rootCmd.Flags()
 
 	flags.Var(option.NewNamedMapOptions(operatorOption.VolcengineENITags, &operatorOption.Config.VolcengineENITags, nil),
 		operatorOption.ENITags, "ENI tags in the form of k1=v1 (multiple k/v pairs can be passed by repeating the CLI flag)")
-	option.BindEnv(vp, operatorOption.ENITags)
+	option.BindEnv(Vp, operatorOption.ENITags)
 
 	flags.Var(option.NewNamedMapOptions(operatorOption.VolcengineENIGCTags, &operatorOption.Config.VolcengineENIGCTags, nil),
 		operatorOption.VolcengineENIGCTags, "Additional tags attached to Volcengine ENIs created by Cilium. Dangling ENIs with this tag will be garbage collected")
-	option.BindEnv(vp, operatorOption.VolcengineENIGCTags)
+	option.BindEnv(Vp, operatorOption.VolcengineENIGCTags)
 
 	flags.Duration(operatorOption.VolcengineENIGCInterval, defaults.ENIGarbageCollectionInterval,
 		"Interval for garbage collection of unattached Volcengine ENIs. Set to 0 to disable")
-	option.BindEnv(vp, operatorOption.VolcengineENIGCInterval)
+	option.BindEnv(Vp, operatorOption.VolcengineENIGCInterval)
 
 	flags.String(operatorOption.VolcengineVPCID, "", "Specific VPC ID for Volcengine ENI. If not set use same VPC as operator")
-	option.BindEnv(vp, operatorOption.VolcengineVPCID)
+	option.BindEnv(Vp, operatorOption.VolcengineVPCID)
 
 	flags.Bool(operatorOption.VolcengineReleaseExcessIPs, false, "Enable releasing excess free IP addresses from Volcengine ENI.")
-	option.BindEnv(vp, operatorOption.VolcengineReleaseExcessIPs)
+	option.BindEnv(Vp, operatorOption.VolcengineReleaseExcessIPs)
 
-	vp.BindPFlags(flags)
+	Vp.BindPFlags(flags)
 }

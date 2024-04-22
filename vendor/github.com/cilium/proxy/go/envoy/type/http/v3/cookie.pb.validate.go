@@ -102,7 +102,6 @@ func (m *Cookie) validate(all bool) error {
 	if len(errors) > 0 {
 		return CookieMultiError(errors)
 	}
-
 	return nil
 }
 

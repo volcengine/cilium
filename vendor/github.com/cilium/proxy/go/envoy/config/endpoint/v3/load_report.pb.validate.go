@@ -167,7 +167,6 @@ func (m *UpstreamLocalityStats) validate(all bool) error {
 	if len(errors) > 0 {
 		return UpstreamLocalityStatsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -369,7 +368,6 @@ func (m *UpstreamEndpointStats) validate(all bool) error {
 	if len(errors) > 0 {
 		return UpstreamEndpointStatsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -477,7 +475,6 @@ func (m *EndpointLoadMetricStats) validate(all bool) error {
 	if len(errors) > 0 {
 		return EndpointLoadMetricStatsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -702,7 +699,6 @@ func (m *ClusterStats) validate(all bool) error {
 	if len(errors) > 0 {
 		return ClusterStatsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -814,7 +810,6 @@ func (m *ClusterStats_DroppedRequests) validate(all bool) error {
 	if len(errors) > 0 {
 		return ClusterStats_DroppedRequestsMultiError(errors)
 	}
-
 	return nil
 }
 

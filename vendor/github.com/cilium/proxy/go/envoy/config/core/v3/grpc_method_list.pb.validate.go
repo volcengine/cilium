@@ -94,7 +94,6 @@ func (m *GrpcMethodList) validate(all bool) error {
 	if len(errors) > 0 {
 		return GrpcMethodListMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -216,7 +215,6 @@ func (m *GrpcMethodList_Service) validate(all bool) error {
 	if len(errors) > 0 {
 		return GrpcMethodList_ServiceMultiError(errors)
 	}
-
 	return nil
 }
 

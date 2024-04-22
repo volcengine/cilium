@@ -42,7 +42,7 @@ type DescribeVpcPeeringConnectionsInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
-	// The filters.
+	// One or more filters.
 	//   - accepter-vpc-info.cidr-block - The IPv4 CIDR block of the accepter VPC.
 	//   - accepter-vpc-info.owner-id - The ID of the Amazon Web Services account that
 	//   owns the accepter VPC.
@@ -76,7 +76,7 @@ type DescribeVpcPeeringConnectionsInput struct {
 	// the end of the items returned by the previous request.
 	NextToken *string
 
-	// The IDs of the VPC peering connections. Default: Describes all your VPC peering
+	// One or more VPC peering connection IDs. Default: Describes all your VPC peering
 	// connections.
 	VpcPeeringConnectionIds []string
 
@@ -99,22 +99,12 @@ type DescribeVpcPeeringConnectionsOutput struct {
 }
 
 func (c *Client) addOperationDescribeVpcPeeringConnectionsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpDescribeVpcPeeringConnections{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpDescribeVpcPeeringConnections{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeVpcPeeringConnections"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -135,22 +125,22 @@ func (c *Client) addOperationDescribeVpcPeeringConnectionsMiddlewares(stack *mid
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeVpcPeeringConnections(options.Region), middleware.Before); err != nil {
@@ -166,9 +156,6 @@ func (c *Client) addOperationDescribeVpcPeeringConnectionsMiddlewares(stack *mid
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
-		return err
-	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -628,6 +615,7 @@ func newServiceMetadataMiddleware_opDescribeVpcPeeringConnections(region string)
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "DescribeVpcPeeringConnections",
 	}
 }

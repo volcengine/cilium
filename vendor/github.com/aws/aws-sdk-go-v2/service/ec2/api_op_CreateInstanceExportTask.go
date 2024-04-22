@@ -4,7 +4,6 @@ package ec2
 
 import (
 	"context"
-	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -13,9 +12,9 @@ import (
 )
 
 // Exports a running or stopped instance to an Amazon S3 bucket. For information
-// about the prerequisites for your Amazon S3 bucket, supported operating systems,
-// image formats, and known limitations for the types of instances you can export,
-// see Exporting an instance as a VM Using VM Import/Export (https://docs.aws.amazon.com/vm-import/latest/userguide/vmexport.html)
+// about the supported operating systems, image formats, and known limitations for
+// the types of instances you can export, see Exporting an instance as a VM Using
+// VM Import/Export (https://docs.aws.amazon.com/vm-import/latest/userguide/vmexport.html)
 // in the VM Import/Export User Guide.
 func (c *Client) CreateInstanceExportTask(ctx context.Context, params *CreateInstanceExportTaskInput, optFns ...func(*Options)) (*CreateInstanceExportTaskOutput, error) {
 	if params == nil {
@@ -71,22 +70,12 @@ type CreateInstanceExportTaskOutput struct {
 }
 
 func (c *Client) addOperationCreateInstanceExportTaskMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpCreateInstanceExportTask{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpCreateInstanceExportTask{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateInstanceExportTask"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -107,22 +96,22 @@ func (c *Client) addOperationCreateInstanceExportTaskMiddlewares(stack *middlewa
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addOpCreateInstanceExportTaskValidationMiddleware(stack); err != nil {
@@ -143,9 +132,6 @@ func (c *Client) addOperationCreateInstanceExportTaskMiddlewares(stack *middlewa
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -153,6 +139,7 @@ func newServiceMetadataMiddleware_opCreateInstanceExportTask(region string) *aws
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "CreateInstanceExportTask",
 	}
 }

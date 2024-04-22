@@ -4,7 +4,6 @@ package ec2
 
 import (
 	"context"
-	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
@@ -43,9 +42,7 @@ type ImportImageInput struct {
 	// The architecture of the virtual machine. Valid values: i386 | x86_64
 	Architecture *string
 
-	// The boot mode of the virtual machine. The uefi-preferred boot mode isn't
-	// supported for importing images. For more information, see Boot modes (https://docs.aws.amazon.com/vm-import/latest/userguide/prerequisites.html#vmimport-boot-modes)
-	// in the VM Import/Export User Guide.
+	// The boot mode of the virtual machine.
 	BootMode types.BootModeValues
 
 	// The client-specific data.
@@ -81,7 +78,10 @@ type ImportImageInput struct {
 	// KmsKeyId is specified, the Encrypted flag must also be set. The KMS key
 	// identifier may be provided in any of the following formats:
 	//   - Key ID
-	//   - Key alias
+	//   - Key alias. The alias ARN contains the arn:aws:kms namespace, followed by the
+	//   Region of the key, the Amazon Web Services account ID of the key owner, the
+	//   alias namespace, and then the key alias. For example,
+	//   arn:aws:kms:us-east-1:012345678910:alias/ExampleAlias.
 	//   - ARN using key ID. The ID ARN contains the arn:aws:kms namespace, followed by
 	//   the Region of the key, the Amazon Web Services account ID of the key owner, the
 	//   key namespace, and then the key ID. For example,
@@ -111,10 +111,7 @@ type ImportImageInput struct {
 	// in the VM Import/Export User Guide.
 	LicenseType *string
 
-	// The operating system of the virtual machine. If you import a VM that is
-	// compatible with Unified Extensible Firmware Interface (UEFI) using an EBS
-	// snapshot, you must specify a value for the platform. Valid values: Windows |
-	// Linux
+	// The operating system of the virtual machine. Valid values: Windows | Linux
 	Platform *string
 
 	// The name of the role to use when not using the default role, 'vmimport'.
@@ -188,22 +185,12 @@ type ImportImageOutput struct {
 }
 
 func (c *Client) addOperationImportImageMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpImportImage{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpImportImage{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "ImportImage"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -224,22 +211,22 @@ func (c *Client) addOperationImportImageMiddlewares(stack *middleware.Stack, opt
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opImportImage(options.Region), middleware.Before); err != nil {
@@ -257,9 +244,6 @@ func (c *Client) addOperationImportImageMiddlewares(stack *middleware.Stack, opt
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -267,6 +251,7 @@ func newServiceMetadataMiddleware_opImportImage(region string) *awsmiddleware.Re
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "ImportImage",
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/constraints"
 )
 
 const eniIndexTagKey = "cilium-eni-index"
@@ -28,4 +29,18 @@ func GetENIIndexFromTags(tags map[string]string) int {
 func FillTagWithENIIndex(tags map[string]string, index int) map[string]string {
 	tags[eniIndexTagKey] = strconv.Itoa(index)
 	return tags
+}
+
+func Max[T constraints.Ordered](x, y T) T {
+	if x < y {
+		return y
+	}
+	return x
+}
+
+func Min[T constraints.Ordered](x, y T) T {
+	if x < y {
+		return x
+	}
+	return y
 }

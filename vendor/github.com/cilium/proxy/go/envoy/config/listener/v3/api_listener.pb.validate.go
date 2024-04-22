@@ -89,7 +89,6 @@ func (m *ApiListener) validate(all bool) error {
 	if len(errors) > 0 {
 		return ApiListenerMultiError(errors)
 	}
-
 	return nil
 }
 

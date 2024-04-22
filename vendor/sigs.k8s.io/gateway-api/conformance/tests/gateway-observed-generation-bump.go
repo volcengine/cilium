@@ -25,7 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/apis/v1beta1"
 	"sigs.k8s.io/gateway-api/conformance/utils/kubernetes"
 	"sigs.k8s.io/gateway-api/conformance/utils/suite"
 )
@@ -39,10 +39,10 @@ var GatewayObservedGenerationBump = suite.ConformanceTest{
 	Description: "A Gateway in the gateway-conformance-infra namespace should update the observedGeneration in all of its Status.Conditions after an update to the spec",
 	Features: []suite.SupportedFeature{
 		suite.SupportGateway,
-		suite.SupportGatewayPort8080,
 	},
 	Manifests: []string{"tests/gateway-observed-generation-bump.yaml"},
 	Test: func(t *testing.T, s *suite.ConformanceTestSuite) {
+
 		gwNN := types.NamespacedName{Name: "gateway-observed-generation-bump", Namespace: "gateway-conformance-infra"}
 
 		t.Run("observedGeneration should increment", func(t *testing.T) {
@@ -52,24 +52,24 @@ var GatewayObservedGenerationBump = suite.ConformanceTest{
 			namespaces := []string{"gateway-conformance-infra"}
 			kubernetes.NamespacesMustBeReady(t, s.Client, s.TimeoutConfig, namespaces)
 
-			// Sanity check
-			kubernetes.GatewayMustHaveLatestConditions(t, s.Client, s.TimeoutConfig, gwNN)
-
-			original := &v1.Gateway{}
+			original := &v1beta1.Gateway{}
 			err := s.Client.Get(ctx, gwNN, original)
 			require.NoErrorf(t, err, "error getting Gateway: %v", err)
 
-			all := v1.NamespacesFromAll
+			// Sanity check
+			kubernetes.GatewayMustHaveLatestConditions(t, s.TimeoutConfig, original)
+
+			all := v1beta1.NamespacesFromAll
 
 			mutate := original.DeepCopy()
 
 			// mutate the Gateway Spec
-			mutate.Spec.Listeners = append(mutate.Spec.Listeners, v1.Listener{
+			mutate.Spec.Listeners = append(mutate.Spec.Listeners, v1beta1.Listener{
 				Name:     "alternate",
 				Port:     8080,
-				Protocol: v1.HTTPProtocolType,
-				AllowedRoutes: &v1.AllowedRoutes{
-					Namespaces: &v1.RouteNamespaces{From: &all},
+				Protocol: v1beta1.HTTPProtocolType,
+				AllowedRoutes: &v1beta1.AllowedRoutes{
+					Namespaces: &v1beta1.RouteNamespaces{From: &all},
 				},
 			})
 
@@ -79,12 +79,12 @@ var GatewayObservedGenerationBump = suite.ConformanceTest{
 			// Ensure the generation and observedGeneration sync up
 			kubernetes.NamespacesMustBeReady(t, s.Client, s.TimeoutConfig, namespaces)
 
-			// Sanity check
-			kubernetes.GatewayMustHaveLatestConditions(t, s.Client, s.TimeoutConfig, gwNN)
-
-			updated := &v1.Gateway{}
+			updated := &v1beta1.Gateway{}
 			err = s.Client.Get(ctx, gwNN, updated)
 			require.NoErrorf(t, err, "error getting Gateway: %v", err)
+
+			// Sanity check
+			kubernetes.GatewayMustHaveLatestConditions(t, s.TimeoutConfig, updated)
 
 			require.NotEqual(t, original.Generation, updated.Generation, "generation should change after an update")
 		})

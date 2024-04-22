@@ -60,7 +60,6 @@ func (m *SniCluster) validate(all bool) error {
 	if len(errors) > 0 {
 		return SniClusterMultiError(errors)
 	}
-
 	return nil
 }
 

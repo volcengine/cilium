@@ -13,8 +13,8 @@ import (
 )
 
 // Creates an EC2 Instance Connect Endpoint. An EC2 Instance Connect Endpoint
-// allows you to connect to an instance, without requiring the instance to have a
-// public IPv4 address. For more information, see Connect to your instances
+// allows you to connect to a resource, without requiring the resource to have a
+// public IPv4 address. For more information, see Connect to your resources
 // without requiring a public IPv4 address using EC2 Instance Connect Endpoint (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Connect-using-EC2-Instance-Connect-Endpoint.html)
 // in the Amazon EC2 User Guide.
 func (c *Client) CreateInstanceConnectEndpoint(ctx context.Context, params *CreateInstanceConnectEndpointInput, optFns ...func(*Options)) (*CreateInstanceConnectEndpointOutput, error) {
@@ -84,22 +84,12 @@ type CreateInstanceConnectEndpointOutput struct {
 }
 
 func (c *Client) addOperationCreateInstanceConnectEndpointMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpCreateInstanceConnectEndpoint{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpCreateInstanceConnectEndpoint{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "CreateInstanceConnectEndpoint"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -120,22 +110,22 @@ func (c *Client) addOperationCreateInstanceConnectEndpointMiddlewares(stack *mid
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addIdempotencyToken_opCreateInstanceConnectEndpointMiddleware(stack, options); err != nil {
@@ -157,9 +147,6 @@ func (c *Client) addOperationCreateInstanceConnectEndpointMiddlewares(stack *mid
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
-		return err
-	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -202,6 +189,7 @@ func newServiceMetadataMiddleware_opCreateInstanceConnectEndpoint(region string)
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "CreateInstanceConnectEndpoint",
 	}
 }

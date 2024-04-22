@@ -4,7 +4,6 @@ package ec2
 
 import (
 	"context"
-	"fmt"
 	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	"github.com/aws/smithy-go/middleware"
@@ -12,9 +11,9 @@ import (
 )
 
 // Attaches an internet gateway or a virtual private gateway to a VPC, enabling
-// connectivity between the internet and the VPC. For more information, see
-// Internet gateways (https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html)
-// in the Amazon VPC User Guide.
+// connectivity between the internet and the VPC. For more information about your
+// VPC and internet gateway, see the Amazon Virtual Private Cloud User Guide (https://docs.aws.amazon.com/vpc/latest/userguide/)
+// .
 func (c *Client) AttachInternetGateway(ctx context.Context, params *AttachInternetGatewayInput, optFns ...func(*Options)) (*AttachInternetGatewayOutput, error) {
 	if params == nil {
 		params = &AttachInternetGatewayInput{}
@@ -59,22 +58,12 @@ type AttachInternetGatewayOutput struct {
 }
 
 func (c *Client) addOperationAttachInternetGatewayMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpAttachInternetGateway{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpAttachInternetGateway{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "AttachInternetGateway"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -95,22 +84,22 @@ func (c *Client) addOperationAttachInternetGatewayMiddlewares(stack *middleware.
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = addOpAttachInternetGatewayValidationMiddleware(stack); err != nil {
@@ -131,9 +120,6 @@ func (c *Client) addOperationAttachInternetGatewayMiddlewares(stack *middleware.
 	if err = addRequestResponseLogging(stack, options); err != nil {
 		return err
 	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -141,6 +127,7 @@ func newServiceMetadataMiddleware_opAttachInternetGateway(region string) *awsmid
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "AttachInternetGateway",
 	}
 }

@@ -89,7 +89,6 @@ func (m *GenericSecret) validate(all bool) error {
 	if len(errors) > 0 {
 		return GenericSecretMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -229,7 +228,6 @@ func (m *SdsSecretConfig) validate(all bool) error {
 	if len(errors) > 0 {
 		return SdsSecretConfigMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -327,18 +325,9 @@ func (m *Secret) validate(all bool) error {
 
 	// no validation rules for Name
 
-	switch v := m.Type.(type) {
+	switch m.Type.(type) {
+
 	case *Secret_TlsCertificate:
-		if v == nil {
-			err := SecretValidationError{
-				field:  "Type",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetTlsCertificate()).(type) {
@@ -370,16 +359,6 @@ func (m *Secret) validate(all bool) error {
 		}
 
 	case *Secret_SessionTicketKeys:
-		if v == nil {
-			err := SecretValidationError{
-				field:  "Type",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetSessionTicketKeys()).(type) {
@@ -411,16 +390,6 @@ func (m *Secret) validate(all bool) error {
 		}
 
 	case *Secret_ValidationContext:
-		if v == nil {
-			err := SecretValidationError{
-				field:  "Type",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetValidationContext()).(type) {
@@ -452,16 +421,6 @@ func (m *Secret) validate(all bool) error {
 		}
 
 	case *Secret_GenericSecret:
-		if v == nil {
-			err := SecretValidationError{
-				field:  "Type",
-				reason: "oneof value cannot be a typed-nil",
-			}
-			if !all {
-				return err
-			}
-			errors = append(errors, err)
-		}
 
 		if all {
 			switch v := interface{}(m.GetGenericSecret()).(type) {
@@ -492,14 +451,11 @@ func (m *Secret) validate(all bool) error {
 			}
 		}
 
-	default:
-		_ = v // ensures v is used
 	}
 
 	if len(errors) > 0 {
 		return SecretMultiError(errors)
 	}
-
 	return nil
 }
 

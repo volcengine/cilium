@@ -16,8 +16,9 @@ import (
 	"time"
 )
 
-// Describes one or more of your subnets. For more information, see Subnets (https://docs.aws.amazon.com/vpc/latest/userguide/configure-subnets.html)
-// in the Amazon VPC User Guide.
+// Describes one or more of your subnets. For more information, see Your VPC and
+// subnets (https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Subnets.html) in
+// the Amazon Virtual Private Cloud User Guide.
 func (c *Client) DescribeSubnets(ctx context.Context, params *DescribeSubnetsInput, optFns ...func(*Options)) (*DescribeSubnetsOutput, error) {
 	if params == nil {
 		params = &DescribeSubnetsInput{}
@@ -41,7 +42,7 @@ type DescribeSubnetsInput struct {
 	// UnauthorizedOperation .
 	DryRun *bool
 
-	// The filters.
+	// One or more filters.
 	//   - availability-zone - The Availability Zone for the subnet. You can also use
 	//   availabilityZone as the filter name.
 	//   - availability-zone-id - The ID of the Availability Zone for the subnet. You
@@ -110,7 +111,7 @@ type DescribeSubnetsInput struct {
 	// the end of the items returned by the previous request.
 	NextToken *string
 
-	// The IDs of the subnets. Default: Describes all your subnets.
+	// One or more subnet IDs. Default: Describes all your subnets.
 	SubnetIds []string
 
 	noSmithyDocumentSerde
@@ -132,22 +133,12 @@ type DescribeSubnetsOutput struct {
 }
 
 func (c *Client) addOperationDescribeSubnetsMiddlewares(stack *middleware.Stack, options Options) (err error) {
-	if err := stack.Serialize.Add(&setOperationInputMiddleware{}, middleware.After); err != nil {
-		return err
-	}
 	err = stack.Serialize.Add(&awsEc2query_serializeOpDescribeSubnets{}, middleware.After)
 	if err != nil {
 		return err
 	}
 	err = stack.Deserialize.Add(&awsEc2query_deserializeOpDescribeSubnets{}, middleware.After)
 	if err != nil {
-		return err
-	}
-	if err := addProtocolFinalizerMiddlewares(stack, options, "DescribeSubnets"); err != nil {
-		return fmt.Errorf("add protocol finalizers: %v", err)
-	}
-
-	if err = addlegacyEndpointContextSetter(stack, options); err != nil {
 		return err
 	}
 	if err = addSetLoggerMiddleware(stack, options); err != nil {
@@ -168,22 +159,22 @@ func (c *Client) addOperationDescribeSubnetsMiddlewares(stack *middleware.Stack,
 	if err = addRetryMiddlewares(stack, options); err != nil {
 		return err
 	}
+	if err = addHTTPSignerV4Middleware(stack, options); err != nil {
+		return err
+	}
 	if err = awsmiddleware.AddRawResponseToMetadata(stack); err != nil {
 		return err
 	}
 	if err = awsmiddleware.AddRecordResponseTiming(stack); err != nil {
 		return err
 	}
-	if err = addClientUserAgent(stack, options); err != nil {
+	if err = addClientUserAgent(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddErrorCloseResponseBodyMiddleware(stack); err != nil {
 		return err
 	}
 	if err = smithyhttp.AddCloseResponseBodyMiddleware(stack); err != nil {
-		return err
-	}
-	if err = addSetLegacyContextSigningOptionsMiddleware(stack); err != nil {
 		return err
 	}
 	if err = stack.Initialize.Add(newServiceMetadataMiddleware_opDescribeSubnets(options.Region), middleware.Before); err != nil {
@@ -199,9 +190,6 @@ func (c *Client) addOperationDescribeSubnetsMiddlewares(stack *middleware.Stack,
 		return err
 	}
 	if err = addRequestResponseLogging(stack, options); err != nil {
-		return err
-	}
-	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
 		return err
 	}
 	return nil
@@ -479,6 +467,7 @@ func newServiceMetadataMiddleware_opDescribeSubnets(region string) *awsmiddlewar
 	return &awsmiddleware.RegisterServiceMetadata{
 		Region:        region,
 		ServiceID:     ServiceID,
+		SigningName:   "ec2",
 		OperationName: "DescribeSubnets",
 	}
 }

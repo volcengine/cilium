@@ -64,7 +64,6 @@ func (m *DnsResolverOptions) validate(all bool) error {
 	if len(errors) > 0 {
 		return DnsResolverOptionsMultiError(errors)
 	}
-
 	return nil
 }
 
@@ -240,7 +239,6 @@ func (m *DnsResolutionConfig) validate(all bool) error {
 	if len(errors) > 0 {
 		return DnsResolutionConfigMultiError(errors)
 	}
-
 	return nil
 }
 
