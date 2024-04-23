@@ -123,6 +123,7 @@ jobs:
         uses: azure/setup-helm@v3
       
       - name: Push Charts
+        if: ${{ github.event_name != 'pull_request_target' && !startsWith(github.ref_name, 'ft/') }}
         run: |
           helm package install/kubernetes/cilium --version 1.14.2-volcengine
           helm push cilium-1.14.2-volcengine.tgz oci://ghcr.io/volcengine/cilium/chart
