@@ -1,0 +1,72 @@
+name: Image Release Build
+
+on:
+  push:
+    tags:
+      - v1.14.[0-9]+-volcengine
+      - v1.14.[0-9]+-volcengine-rc.[0-9]+
+
+permissions:
+  # To be able to access the repository with `actions/checkout`
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    timeout-minutes: 45
+    name: Build and Push Images
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+          - name: cilium
+            dockerfile: ./images/cilium/Dockerfile
+
+          - name: operator-volcengine
+            dockerfile: ./images/operator/Dockerfile
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f95db51fddba0c2d1ec667646a06c2ce06100226 # v3.0.0
+
+      - name: Login to CR
+        uses: docker/login-action@e92390c5fb421da1463c202d546fed0ec5c39f20 # v3.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Getting image tag
+        id: tag
+        run: |
+          echo tag=${GITHUB_REF##*/} >> $GITHUB_OUTPUT
+
+      - name: Checkout Source Code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          persist-credentials: false
+
+      - name: Release Build ${{ matrix.name }}
+        uses: docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56 # v5.1.0
+        id: docker_build_release
+        with:
+          provenance: false
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/volcengine/cilium/${{ matrix.name }}:${{ steps.tag.outputs.tag }}
+          target: release
+          build-args: |
+            OPERATOR_VARIANT=${{ matrix.name }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+
+      - name: Push Charts
+        run: |
+          chart_version=${{ steps.tag.outputs.tag }}
+          chart_version=${chart_version#v}
+          helm package install/kubernetes/cilium --version ${chart_version}
+          helm push ${chart_version}.tgz oci://ghcr.io/volcengine/cilium/chart
