@@ -29,7 +29,7 @@ var (
 	// CiliumStartTimeout is a predefined timeout value for Cilium startup.
 	CiliumStartTimeout = 100 * time.Second
 
-	// CheckLogs newtes a new buffer where all the warnings and checks that
+	// CheckLogs creates a new buffer where all the warnings and checks that
 	// happens during the test are saved. This buffer will be printed in the
 	// test output inside <checks> labels.
 	CheckLogs = ginkgoext.NewWriter(new(bytes.Buffer))
