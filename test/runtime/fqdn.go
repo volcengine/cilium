@@ -171,7 +171,7 @@ var _ = Describe("RuntimeAgentFQDNPolicies", func() {
 		if !res.WasSuccessful() {
 			if !strings.Contains(res.Stderr(), "network with name world already exists") {
 				res.ExpectSuccess(
-					"%q network cant be created", helpers.WorldDockerNetwork)
+					"%q network can't be created", helpers.WorldDockerNetwork)
 			}
 		}
 
